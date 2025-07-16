@@ -1,51 +1,36 @@
-"""
-
-MetaMorph.py
-
-Main CLI runner script
-
-Taking messy metadata—free-text columns, inconsistent formats, half-structured text, and turn it into structured,
-machine-usable formats for downstream ML workflows. 
-Think of it as a metadata refinery powered by LLM agents
-
-"""
-
-
-"""from pipeline.processor import MetaMorphProcessor
-
-if __name__ == "__main__":
-    print("🚀 Starting MetaMorph MVP pipeline...")
-    processor = MetaMorphProcessor()
-    processor.run()
-"""
-
-
 # metamorph.py
-import pandas as pd
-from llm_agent.column_labeler import label_column
+
+from llm_agent.metamorph_agent import initialize_metamorph_agent
+from tabulate import tabulate
+
+from dotenv import load_dotenv
+load_dotenv()
 
 def main():
-    # Load sample input
-    df = pd.DataFrame({
-        "col_1": [
-            "5 feet 10 inches", 
-            "6ft", 
-            "172cm"
-        ]
-    })
+    # Sample metadata column 
+    column_data = [
+        "5 ft 9 in",
+        " 170cm ",
+        "Six feet tall",
+        "180 cm approx",
+        "5ft-11in"
+    ]
 
-    # Pick column
-    column_name = "col_1"
-    column_data = df[column_name].tolist()
+    agent = initialize_metamorph_agent()
 
-    # Call LLM agent stub
-    labeled_output = label_column(column_name, column_data)
+    print("🔍 MetaMorph LLM Agent Results:\n")
 
-    # Display output
-    print(f"📦 Processed Column: {column_name}")
-    for i, item in enumerate(labeled_output):
-        print(f"{i+1}. Input: {column_data[i]}")
-        print(f"   Parsed: {item}\n")
+    results = []
+    for val in column_data:
+        try:
+            result = agent.invoke({"input": val})
+            output = result.get("output", {})
+            parsed_cm = output.get("parsed_height_cm", "N/A") if isinstance(output, dict) else str(output)
+            results.append([val.strip(), parsed_cm])
+        except Exception as e:
+            results.append([val.strip(), f"Error: {str(e)}"])
+
+    print(tabulate(results, headers=["Input", "Parsed Height (cm)"], tablefmt="grid"))
 
 if __name__ == "__main__":
     main()
