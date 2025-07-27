@@ -21,7 +21,7 @@ class SchemaInference(BaseModel):
         description="Detailed justification for ..., explaining the rationale behind ..."
     )
 
-#Implement Node 
+
 
 async def schema_inference_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
@@ -40,9 +40,7 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
                 inferred_type=response.Inferred_type,
                 confidence=response.conf,
                 notes=response.reason
-
-            )
-            ,
+            ),
         },
         goto="supervisor"
     )
