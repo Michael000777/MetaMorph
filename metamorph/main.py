@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_community.tools.tavily_search import TavilySearchResults
 from langgraph.types import Command
-from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.graph import StateGraph, START, END
 from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.memory import MemorySaver
 from IPython.display import Image, display
@@ -20,11 +20,15 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from supervisor import supervisor_node
 from utils.thread import generate_thread_id
+from utils.MetaMorphState import MetaMorphState
+from input import build_sample_data
+
+
 
 memory = MemorySaver()
 
 
-graph = StateGraph(MessagesState)
+graph = StateGraph(MetaMorphState)
 
 graph.add_node("supervisor", supervisor_node)
 graph.add_node("...", ...)
@@ -45,4 +49,5 @@ config = {
     }
 }
 
-
+#main
+current_state = MetaMorphState()

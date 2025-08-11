@@ -26,8 +26,12 @@ class SchemaInference(BaseModel):
 async def schema_inference_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
     messages = [
-        {"role": "system", "content": schema_system_prompt}, 
-    ] + state.input_column_data
+        {"role": "system", "content": schema_system_prompt},
+        {
+            "role": "user",
+            "content": state.ColumnSample.model_dump()
+        } 
+    ]
 
     response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
 
