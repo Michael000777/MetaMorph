@@ -3,12 +3,14 @@ from pathlib import Path
 from pydantic import BaseModel, Field, constr, confloat
 from typing import Annotated, Sequence, List, Literal
 from langgraph.types import Command
+from datetime import datetime, timezone
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from utils.llm import get_llm
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState, parsedData
+
 
 llm = get_llm()
 
@@ -57,6 +59,9 @@ class StructureParserOutput(BaseModel):
 
 
 async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+
     messages = [
         {"role": "system", "content": parser_prompt},
         {
@@ -70,14 +75,26 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
     response = await llm.with_structured_output(StructureParserOutput).ainvoke(messages)
 
-    return Command(
-        update={
-            "parsed_data_output" : parsedData(
-                column_name=response.column,
-                parsed_output=response.parsed_col_data,
-                model_confidence=response.confidence,
-                notes=response.notes
-            ),
+    curr_col = state.input_column_data.column_name
+
+    P_PATCH = { 
+        "Node_Col_Tracker" : { 
+            "node_path" : {
+                curr_col: {
+                    "ParserNode": response.notes
+                    }
+                },
+            "events_path" : [f"ParserNode@{timestamp}"]
         },
-        goto="supervisor"
-    )
+        "parsed_data_output" : {
+            "column_name" : response.column,
+            "parsed_output" : response.parsed_col_data,
+            "model_confidence" : response.confidence,
+            "notes" : response.notes
+        }  
+    }
+    
+
+
+    return Command(update=P_PATCH, goto="supervisor")
+
