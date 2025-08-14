@@ -8,6 +8,7 @@ from typing import Annotated, Sequence, List, Literal
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.types import Command
+from datetime import datetime, timezone
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -34,11 +35,13 @@ class Supervisor(BaseModel):
     )
 
 
-async def supervisor_node(state: MessagesState) -> Command[Literal["agent1", "agent2", "agent3"]]:
+async def supervisor_node(state: MessagesState) -> Command[Literal["SchemaInference", "Parser", "Refiner", "Validator"]]: #update with names used to compile graph!
+
+    timestamp = datetime.now(timezone.utc).isoformat()
 
     messages = [
         {"role": "system", "content": Supervisor_system_prompt},
-    ] + state["messages"]
+    ]
 
     response = await llm.with_structured_output(Supervisor).ainvoke(messages)
 
@@ -47,11 +50,20 @@ async def supervisor_node(state: MessagesState) -> Command[Literal["agent1", "ag
 
     print(f"--- MetaMorph Transitioning: Supervisor → {goto.upper()} ---") #Key for initial validation, and see transitional steps.
 
+    curr_col = state.input_column_data.column_name
+
+    SUP_PATCH = { 
+        "Node_Col_Tracker" : { 
+            "node_path" : {
+                curr_col: {
+                    "SupervisorNode": reason
+                    }
+                },
+            "events_path" : [f"SupervisorNode@{timestamp}"]
+        }
+    }
+
     return Command(
-        update={
-            "messages": [
-                HumanMessage(content=reason, name="supervisor")
-            ]
-        },
+        update=SUP_PATCH,
         goto=goto,
     )

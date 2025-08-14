@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Annotated, Sequence, List, Literal
 from langgraph.types import Command
+from datetime import datetime, timezone
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -25,6 +26,8 @@ class SchemaInference(BaseModel):
 
 async def schema_inference_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
+    timestamp = datetime.now(timezone.utc).isoformat()
+
     messages = [
         {"role": "system", "content": schema_system_prompt},
         {
@@ -35,16 +38,29 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
 
     response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
 
+    curr_col = state.input_column_data.column_name
 
     print(f"--- MetaMorph Transitioning: Schema Inference → Supervisor ---")
 
-    return Command(
-        update={
-            "schema_inference": SchemaInferenceResults(
-                inferred_type=response.Inferred_type,
-                confidence=response.conf,
-                notes=response.reason
-            ),
+
+    SI_PATCH = {
+        "schema_inference" : {
+            "inferred_type" : response.Inferred_type,
+            "confidence" : response.conf,
+            "notes" : response.reason
         },
+        "Node_Col_Tracker" : { 
+            "node_path" : {
+                curr_col: {
+                    "SchemaInferenceNode": response.reason
+                    }
+                },
+            "events_path" : [f"SchemaInferenceNode@{timestamp}"]
+        }
+    }
+
+    return Command(
+        update=SI_PATCH,
         goto="supervisor"
     )
+
