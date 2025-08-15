@@ -3,6 +3,8 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Annotated, Sequence, List, Literal
 from langgraph.types import Command
+from datetime import datetime, timezone
+import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -25,22 +27,43 @@ class SchemaInference(BaseModel):
 
 async def schema_inference_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
+    timestamp = datetime.now(timezone.utc).isoformat()
+
     messages = [
-        {"role": "system", "content": schema_system_prompt}, 
-    ] + state.input_column_data
+        {"role": "system", "content": schema_system_prompt},
+        {
+            "role": "user",
 
-    response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
+            # HumanMessage.content must be str or content blocks; serialize dict
+            "content": json.dumps(state.ColumnSample.model_dump(), ensure_ascii=False)
+        } 
+    ]
 
+    response = await llm.with_structured_output(SchemaInference, method="function_calling").ainvoke(messages)
+
+    curr_col = state.input_column_data.column_name
 
     print(f"--- MetaMorph Transitioning: Schema Inference → Supervisor ---")
 
-    return Command(
-        update={
-            "schema_inference": SchemaInferenceResults(
-                inferred_type=response.Inferred_type,
-                confidence=response.conf,
-                notes=response.reason
-            ),
+
+    SI_PATCH = {
+        "schema_inference" : {
+            "inferred_type" : response.Inferred_type,
+            "confidence" : response.conf,
+            "notes" : response.reason
         },
-        goto="supervisor"
+        "Node_Col_Tracker" : { 
+            "node_path" : {
+                curr_col: {
+                    "SchemaInferenceNode": response.reason
+                    }
+                },
+            "events_path" : [f"SchemaInferenceNode@{timestamp}"]
+        }
+    }
+
+    return Command(
+        update=SI_PATCH,
+        goto="parser_agent"  # name of the next node to transition to
     )
+
