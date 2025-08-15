@@ -1,9 +1,11 @@
 import sys
 from pathlib import Path
-from pydantic import BaseModel, Field, constr, confloat
-from typing import Annotated, Sequence, List, Literal
+from pydantic.v1 import BaseModel, Field, constr, confloat
+from typing import Annotated, Sequence, List, Literal, Optional
 from langgraph.types import Command
 from datetime import datetime, timezone
+
+import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -16,6 +18,9 @@ llm = get_llm()
 
 parser_prompt = get_prompt("parser_prompt")
 
+ConfidenceFloat = Annotated[float, Field(ge=0.0, le=1.0)]
+LongStr = Annotated[str, Field(min_length=10)]
+
 class StructureParserOutput(BaseModel):
     column: str = Field(
         ..., 
@@ -27,7 +32,7 @@ class StructureParserOutput(BaseModel):
         example="Strain_ID"
     )
 
-    parsed_col_data: List[str] = Field(
+    parsed_col_data: List[Optional[str]] = Field(
         ..., 
         description=(
             "A list of parsed values corresponding to the input column. "
@@ -37,25 +42,8 @@ class StructureParserOutput(BaseModel):
         example=["strain_A", "strain_B", "strain_C"]
     )
 
-    confidence: confloat(ge=0.0, le=1.0) = Field(
-        ..., 
-        description="A float between 0 and 1 representing the confidence level of the parser in the correctness of this transformation.",
-        example=0.92
-    )
-
-    notes: constr(min_length=10) = Field(
-        ..., 
-        description=(
-            "Detailed justification or rationale for the parsing results. "
-            "Explain how the machine-readable output was derived from the original column, "
-            "including any assumptions, heuristics, or rules applied."
-        ),
-        example=(
-            "Parsed the 'Strain_ID' column by splitting on underscores and extracting strain identifiers. "
-            "Filtered out replicates and control labels."
-        )
-    )
-
+    confidence: ConfidenceFloat = ...
+    notes: LongStr = ...
 
 
 async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
@@ -66,16 +54,31 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
         {"role": "system", "content": parser_prompt},
         {
             "role": "user",
-            "content": {
-                "column schema information": state.schema_inference.model_dump(),
-                "Input column information": state.input_column_data.model_dump()
-            }
+            
+            #Serialize the composite payload to a JSON string for the LLM
+            "content": json.dumps(
+                {
+                    "column_schema_information": state.schema_inference.model_dump(),
+                    "input_column_information": state.input_column_data.model_dump(),
+                },
+                ensure_ascii=False,
+            ),
         }
     ]
 
-    response = await llm.with_structured_output(StructureParserOutput).ainvoke(messages)
+    response = await llm.with_structured_output(StructureParserOutput, method="function_calling").ainvoke(messages)
 
     curr_col = state.input_column_data.column_name
+    
+    expected_len = len(state.input_column_data.values)
+
+    # --- Enforce row alignment (pad/truncate) ---
+    vals = list(response.parsed_col_data)
+    if len(vals) < expected_len:
+        vals.extend([None] * (expected_len - len(vals)))
+    elif len(vals) > expected_len:
+        vals = vals[:expected_len]
+        
 
     P_PATCH = { 
         "Node_Col_Tracker" : { 
@@ -88,7 +91,7 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
         },
         "parsed_data_output" : {
             "column_name" : response.column,
-            "parsed_output" : response.parsed_col_data,
+            "parsed_output" : vals,
             "model_confidence" : response.confidence,
             "notes" : response.notes
         }  
@@ -96,5 +99,5 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
     
 
 
-    return Command(update=P_PATCH, goto="supervisor")
+    return Command(update=P_PATCH, goto="refinement_agent")
 
