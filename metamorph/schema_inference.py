@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Annotated, Sequence, List, Literal
 from langgraph.types import Command
 from datetime import datetime, timezone
+import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -32,11 +33,13 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
         {"role": "system", "content": schema_system_prompt},
         {
             "role": "user",
-            "content": state.ColumnSample.model_dump()
+
+            # HumanMessage.content must be str or content blocks; serialize dict
+            "content": json.dumps(state.ColumnSample.model_dump(), ensure_ascii=False)
         } 
     ]
 
-    response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
+    response = await llm.with_structured_output(SchemaInference, method="function_calling").ainvoke(messages)
 
     curr_col = state.input_column_data.column_name
 
@@ -61,6 +64,6 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
 
     return Command(
         update=SI_PATCH,
-        goto="supervisor"
+        goto="parser_agent"  # name of the next node to transition to
     )
 
