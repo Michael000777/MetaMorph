@@ -16,6 +16,9 @@ llm = get_llm()
 
 parser_prompt = get_prompt("parser_prompt")
 
+ConfidenceFloat = Annotated[float, Field(ge=0.0, le=1.0)]
+LongStr = Annotated[str, Field(min_length=10, strip_whitespace=True)]
+
 class StructureParserOutput(BaseModel):
     column: str = Field(
         ..., 
@@ -24,7 +27,7 @@ class StructureParserOutput(BaseModel):
             "Example values include: 'age_col', 'Date', 'Location', 'Strain_ID', "
             "'Replicate', 'Inoculation_date'."
     ),
-        example="Strain_ID"
+    json_schema_extra={"example": ["Strain_ID"]},
     )
 
     parsed_col_data: List[str] = Field(
@@ -34,27 +37,27 @@ class StructureParserOutput(BaseModel):
             "Each element represents a value extracted or cleaned for a specific row. "
             "Should preserve row order."
         ),
-        example=["strain_A", "strain_B", "strain_C"]
+        json_schema_extra={"examples": [["strain_A", "strain_B", "strain_C"]]},
     )
 
-    confidence: confloat(ge=0.0, le=1.0) = Field(
-        ..., 
-        description="A float between 0 and 1 representing the confidence level of the parser in the correctness of this transformation.",
-        example=0.92
+    confidence: ConfidenceFloat = Field(
+        ...,
+        description="A float between 0 and 1 representing the confidence level."
     )
 
-    notes: constr(min_length=10) = Field(
+    notes: LongStr = Field(
         ..., 
         description=(
             "Detailed justification or rationale for the parsing results. "
             "Explain how the machine-readable output was derived from the original column, "
             "including any assumptions, heuristics, or rules applied."
         ),
-        example=(
+        json_schema_extra={"examples": [
             "Parsed the 'Strain_ID' column by splitting on underscores and extracting strain identifiers. "
             "Filtered out replicates and control labels."
+        ]},   
         )
-    )
+    
 
 
 
