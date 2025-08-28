@@ -11,13 +11,21 @@ from utils.deep_union import deep_union
 
 class InputColumnData(BaseModel):
     column_name: str = Field(default_factory=str)
-    values: List[Optional[Any]]
+    values: List[Optional[Any]] = Field(default_factory=list)
+
+    def __len__(self) -> int:
+        return len(self.values)
+    
+    @property
+    def n_non_null(self) -> int:
+        return sum(v is not None for v in self.values)
+    
 
 class parsedData(BaseModel):
     column_name: str = Field(default_factory=str)
-    parsed_output: List[Optional[Any]]
+    parsed_output: List[Optional[Any]] = Field(default_factory=list)
     model_confidence: float = Field(default_factory=float)
-    notes: Optional[str]
+    notes: Optional[str] = Field(default_factory=str)
 
 class SchemaInferenceResults(BaseModel):
     inferred_type: str = Field(default_factory=str)
