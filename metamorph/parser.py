@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, constr, confloat
 from typing import Annotated, Sequence, List, Literal
 from langgraph.types import Command
 from datetime import datetime, timezone
+import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -65,15 +66,30 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
+    if not state.input_column_data.values:
+        raise ValueError("No column data loaded")
+    
+    num_rows = len(state.input_column_data)
+
+    #Null value guard rail
+    non_null_vals = state.input_column_data.n_non_null
+
+    if num_rows and non_null_vals / num_rows < 0.5:
+        raise ValueError("Too many nulls for reliable agent parsing!!")
+    
+    payload = {
+                "column schema information": state.schema_inference.model_dump(mode="json", exclude=None),
+                "Input column information": state.input_column_data.model_dump(mode="json", exclude=None)
+            }
+    
+    payload_content = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), default=str)
+
     messages = [
         {"role": "system", "content": parser_prompt},
         {
             "role": "user",
-            "content": {
-                "column schema information": state.schema_inference.model_dump(),
-                "Input column information": state.input_column_data.model_dump()
-            }
-        }
+            "content": payload_content
+        },
     ]
 
     response = await llm.with_structured_output(StructureParserOutput).ainvoke(messages)

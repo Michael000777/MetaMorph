@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 from typing import Annotated, Sequence, List, Literal
 from langgraph.types import Command
 from datetime import datetime, timezone
+import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
@@ -28,11 +29,16 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
+    payload = json.dumps(
+        state.ColumnSample.model_dump(mode="json", exclude=None),
+        ensure_ascii=False, separators=(",", ":"), default=str
+        )
+
     messages = [
         {"role": "system", "content": schema_system_prompt},
         {
             "role": "user",
-            "content": state.ColumnSample.model_dump()
+            "content": payload
         } 
     ]
 
