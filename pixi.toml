@@ -6,14 +6,20 @@ platforms = ["osx-arm64"]
 version = "0.1.0"
 
 [tasks]
+run-MetaMorph = "python metamorph/main.py"
 
 [dependencies]
-pandas = ">=2.3.1,<3"
+python = "3.13.*"
+pandas = ">=2.3.2,<3"
 numpy = ">=2.3.1,<3"
-langchain = ">=0.3.17,<0.4"
-langgraph = ">=0.4.4,<0.5"
 pydantic = ">=2.11.7,<3"
 python-dotenv = ">=1.1.1,<2"
 ipython = ">=9.4.0,<10"
+
+[pypi-dependencies]
+langgraph = ">=0.5,<0.6"
+langchain = ">=0.3.17,<0.4"
 langchain-openai = ">=0.3.28,<0.4"
 langchain-groq = ">=0.3.6,<0.4"
+langchain-experimental = ">=0.3.2,<0.4" 
+

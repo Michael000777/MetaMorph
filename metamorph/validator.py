@@ -36,7 +36,7 @@ class ValidatorLLMOutput(BaseModel):
 
 def determine_route(decision: str, retry_count: int = 0) -> str:
     if decision == "pass":
-        return "__end__"
+        return END #Using this for now; need to update with either end_pass or end_fail for more visibility.
     elif decision == "retry" and retry_count < MAX_RETRIES:
         return "refinement_agent"  # name of the retry target
     else:
