@@ -30,7 +30,7 @@ class parsedData(BaseModel):
 class SchemaInferenceResults(BaseModel):
     inferred_type: str = Field(default_factory=str)
     confidence: float = Field(default_factory=float)
-    notes: Optional[str]
+    notes: Optional[str] = Field(default_factory=str)
 
 class RefinementResults(BaseModel):
     cleaned_values: List[Optional[Any]]
