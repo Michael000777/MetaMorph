@@ -1,6 +1,8 @@
 #used for deeper union of dictionaries 
+from typing import Optional, Dict, List, Any, Annotated
 
-def deep_union(left, right):
+
+def deep_union(left: Dict[str, Any] | None, right: Dict[str, Any] | None) -> Dict[str, Any]:
     left = left or {}
     right = right or {}
 

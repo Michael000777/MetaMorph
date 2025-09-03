@@ -60,7 +60,9 @@ async def supervisor_node(state: MetaMorphState) -> Command[Literal["schema_infe
     goto = response.next
     reason = response.justification
 
-    print(f"--- MetaMorph Transitioning: Supervisor → {goto.upper()} ---") #Key for initial validation, and see transitional steps.
+    print(f"--- MetaMorph Transitioning: Supervisor → {goto.upper()} ---", flush=True) #Key for initial validation, and see transitional steps.
+
+    print(f"Supervisor Justificaiton: {reason}", flush=True)
 
     curr_col = state.input_column_data.column_name
 

@@ -94,6 +94,12 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
     response = await llm.with_structured_output(StructureParserOutput).ainvoke(messages)
 
+    print(f"--- MetaMorph Transitioning: Parser → Supervisor ---", flush=True)
+
+    print(f"Parser Output: {response.parsed_col_data}", flush=True)
+    print(f"Parser Confidence: {response.confidence}", flush=True)
+    print(f"Notes: {response.notes}", flush=True)
+
     curr_col = state.input_column_data.column_name
 
     P_PATCH = { 
