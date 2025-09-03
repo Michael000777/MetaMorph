@@ -9,6 +9,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from utils.deep_union import deep_union
 
 
+
 class InputColumnData(BaseModel):
     column_name: str = Field(default_factory=str)
     values: List[Optional[Any]] = Field(default_factory=list)
@@ -53,9 +54,34 @@ class ColSample(BaseModel):
     note: str | None = "Values truncated for token budget"
 
 class tracker(BaseModel):
-    processed_column : Annotated[List[str], operator.add] = Field(default_factory=list)
-    node_path : Annotated[Dict[str, Dict[str, Optional[str]]], deep_union] = Field(default_factory=dict)
-    events_path: Annotated[List[str], operator.add] = Field(default_factory=list)
+    processed_column : List[str] = Field(default_factory=list)
+    node_path : Dict[str, Dict[str, Optional[str]]] = Field(default_factory=dict)
+    events_path: List[str] = Field(default_factory=list)
+
+
+def _to_tracker(x: Optional[tracker | Dict[str, Any]]) -> tracker:
+    if x is None:
+        return tracker()
+    if isinstance(x, tracker):
+        return x
+    if isinstance(x, dict):
+        # tolerating partial patches
+        return tracker(
+            processed_column=x.get("processed_column", []),
+            node_path=x.get("node_path", {}),
+            events_path=x.get("events_path", []),
+        )
+    # last resort: trying pydantic coercion
+    return tracker.model_validate(x)
+
+def merge_tracker(left: Optional[tracker], right: Optional[tracker]) -> tracker:
+    left = _to_tracker(left)
+    right = _to_tracker(right)
+    return tracker(
+        processed_column = [*left.processed_column, *right.processed_column],
+        node_path = deep_union(left.node_path, right.node_path),
+        events_path = [*left.events_path, *right.events_path]
+    )
 
 
 
@@ -68,5 +94,5 @@ class MetaMorphState(BaseModel):
     schema_inference: SchemaInferenceResults = Field(default_factory=SchemaInferenceResults)
     refinement_results: Optional[RefinementResults] = None
     validator_data: Optional[ValidatorData] = None
-    Node_Col_Tracker: tracker = Field(default_factory=tracker)
+    Node_Col_Tracker: Annotated[tracker, merge_tracker] = Field(default_factory=tracker)
 

@@ -3,7 +3,7 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 #from langchain_groq import ChatGroq
 
-load_dotenv("/Users/michael/Documents/Bioinformatics/Personal_Projects/ML/MetaMorph/.env")
+load_dotenv()
 
 llm = ChatOpenAI(model="gpt-4o")
 

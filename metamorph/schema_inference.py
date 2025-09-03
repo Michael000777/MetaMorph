@@ -46,7 +46,11 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
 
     curr_col = state.input_column_data.column_name
 
-    print(f"--- MetaMorph Transitioning: Schema Inference → Supervisor ---")
+    print(f"--- MetaMorph Transitioning: Schema Inference → Supervisor ---", flush=True)
+
+    print(f"Inferred Schema: {response.Inferred_type}", flush=True)
+    print(f"Confidence: {response.conf}", flush=True)
+    print(f"Notes: {response.reason}", flush=True)
 
 
     SI_PATCH = {
