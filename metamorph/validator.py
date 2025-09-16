@@ -8,7 +8,7 @@ from utils.prompts import get_prompt
 from langchain_core.messages import HumanMessage
 from langgraph.graph import START, END, MessagesState
 from langgraph.types import Command
-from utils.MetaMorphState import ValidatorData, MetaMorphState
+from utils.MetaMorphState import ValidatorData, MetaMorphState, tracker
 
 
 MAX_RETRIES = 5
@@ -83,9 +83,17 @@ async def validator_node(state: MetaMorphState) -> Command:
         reason = f"Validator LLM error: {e}"
         conf = 0.0
 
-    print(f"Validation: {decision.upper()} — {reason}")
+    print(f"Validation: {decision.upper()} — {reason}", flush=True)
 
     route = determine_route(decision, getattr(state, "retry_count", 0))
+    
+    #Tracker patch (merged by Node_Col_tracker
+    curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
+    V_PATCH = {
+        "processed_column": [curr_col],
+         "node_path": {curr_col: {"validator": decision}},
+         "events_path": [f"Validator → {('Refinement' if decision=='retry' else 'End' if decision=='pass' else 'Supervisor')}"]
+     }
 
 
 
@@ -99,6 +107,7 @@ async def validator_node(state: MetaMorphState) -> Command:
         "messages": [HumanMessage(content=reason, name="validator")],
         "validation_confidence": conf,
         "retry_count": getattr(state, "retry_count", 0) + (1 if decision == "retry" else 0),
+        "Node_Col_tracker": V_PATCH,
     },
     goto=route,
 )
