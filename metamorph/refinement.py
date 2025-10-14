@@ -1,8 +1,8 @@
 # Refinement.py implementatiion
 
-
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
-from typing import List, Any, Optional
+from typing import List, Optional, Union
 from utils.llm import get_llm
 from utils.prompts import get_prompt
 from langchain_core.messages import HumanMessage
@@ -12,17 +12,24 @@ from utils.MetaMorphState import MetaMorphState, RefinementResults, tracker
 llm = get_llm()
 refinement_prompt = get_prompt("refinement_prompt")
 
+JSONScalar = Union[str, int, float, bool, None]
+
 class Refinement(BaseModel):
-    refined_values: List[Optional[Any]] = Field(..., description="Cleaned, final metadata values")
+    refined_values: List[List[JSONScalar]] = Field(..., description="Cleaned, final metadata values")
     confidence: float = Field(..., ge=0.0, le=1.0)
-    notes: Optional[str] = Field(None, description="Explanation of changes or logic applied")
+    notes: str = Field(None, description="Explanation of changes or logic applied")
 
 async def refinement_agent(state: MetaMorphState) -> Command:
+    timestamp = datetime.now(timezone.utc).isoformat()
+
     parsed = state.parsed_data_output
     schema = state.schema_inference
     raw = state.input_column_data
 
     # Combine all context into one user message
+    # Do we ignore passing raw inputs into the refiner again? token management
+    #Now that we have the possibility of multiple columns per col do we pass all at once? yes for now as we don't want to pass raw and SI redundantly 
+
     user_message = (
         f"Original metadata column: {(raw.model_dump() if raw else {})}\n\n"
         f"Initial parsed values: {(parsed.model_dump() if parsed else {})}\n\n"
@@ -45,13 +52,15 @@ async def refinement_agent(state: MetaMorphState) -> Command:
             goto="validator_agent"
         )
         
-            # Enforce row alignment with the source column
+    # Enforce row alignment with the source column
     expected = len(raw.values)
     vals = list(result.refined_values)
-    if len(vals) < expected:
-        vals += [None] * (expected - len(vals))
-    elif len(vals) > expected:
-        vals = vals[:expected]
+
+    for new_col in vals: #updated to accomodate multiple columns.
+        if len(new_col) < expected:
+            new_col += [None] * (expected - len(new_col))
+        elif len(new_col) > expected:
+            new_col = new_col[:expected]
         
     
     
@@ -68,7 +77,7 @@ async def refinement_agent(state: MetaMorphState) -> Command:
     # Produce a proper RefinementResults object (matches MetaMorphState schema)
     new_refinement = RefinementResults(
         cleaned_values=vals,
-        confidence=1.0,               # keep if you intend to add model-derived confidence later
+        confidence=result.confidence, #replaced default 1 with model derived confidence.
         refinement_attempts=prev_attempts + 1,
     )
 
@@ -76,15 +85,16 @@ async def refinement_agent(state: MetaMorphState) -> Command:
     curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
     R_PATCH = {
         "processed_column": [curr_col],
-        "node_path": {curr_col: {"refinement": "done"}},
-        "events_path": ["Refinement → Validator"]
+        "node_path": {curr_col: {"refinement": result.notes}},
+        "events_path" : [f"RefinementNode@{timestamp}"]
+        #"events_path": ["Refinement → Validator"]
     }
 
     return Command(
         update={
             "refinement_results": new_refinement,
             "Node_Col_Tracker": R_PATCH,
-            "messages": [HumanMessage(content=f"Refinement complete: {result.notes}", name="refiner")],
+            "messages": [HumanMessage(content=f"Refinement complete: {result.notes}", name="refiner")], #where from messages? Upated node path to take the notes.
         },
         goto="validator_agent",
     )
