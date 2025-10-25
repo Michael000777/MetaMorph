@@ -21,13 +21,10 @@ llm = get_llm()
 Supervisor_system_prompt = get_prompt("Supervisor_system_prompt")
 
 
-#TO DO: edit system prompt message to reflect the agents available to the supervisor node. 
-
-
 class Supervisor(BaseModel):
-    next: Literal["schema_inference", "parser_agent", "refinement_agent", "validator_agent"] = Field(
+    next: Literal["schemaInference", "parser_agent", "refinement_agent", "validator_agent"] = Field(
         description="Determines which agent specialist to activate next in the workflow sequence: "
-        "'schema_inference' when the data type or structure of the column needs to be inferred."
+        "'schemaInference' when the data type or structure of the column needs to be inferred."
         "'parser_agent' when raw data needs to be parsed and transformed."
         "'refinement_agent' when parsed data needs cleaning or normalization."
         "'validator_agent' when output needs final verification."
@@ -37,7 +34,7 @@ class Supervisor(BaseModel):
     )
 
 
-async def supervisor_node(state: MetaMorphState) -> Command[Literal["schema_inference", "parser_agent", "refinement_agent", "validator_agent"]]: #update with names used to compile graph!
+async def supervisor_node(state: MetaMorphState) -> Command[Literal["schemaInference", "parser_agent", "refinement_agent", "validator_agent"]]: #update with names used to compile graph!
 
     timestamp = datetime.now(timezone.utc).isoformat()
 

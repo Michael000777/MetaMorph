@@ -102,5 +102,5 @@ class MetaMorphState(BaseModel):
     refinement_results: Optional[RefinementResults] = None
     validator_data: Optional[ValidatorData] = None
     Node_Col_Tracker: Annotated[tracker, merge_tracker] = Field(default_factory=tracker)
-    ImagoContext: ImagoState = Field(default_factory=ImagoState)
+    #ImagoContext: ImagoState = Field(default_factory=ImagoState)
 
