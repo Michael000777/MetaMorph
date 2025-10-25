@@ -23,10 +23,10 @@ class InputColumnData(BaseModel):
     
 
 class parsedData(BaseModel):
-    column_name: str = Field(default_factory=str)
-    parsed_output: List[Optional[Any]] = Field(default_factory=list)
-    model_confidence: float = Field(default_factory=float)
-    notes: Optional[str] = Field(default_factory=str)
+    column_name: Dict[str, Optional[List[str]]] = Field(default_factory=dict)
+    parsed_output: List[List[Any]] = Field(default_factory=list)
+    model_confidence: float = 0.0
+    notes: Optional[str] = None
 
 class SchemaInferenceResults(BaseModel):
     inferred_type: str = Field(default_factory=str)
@@ -34,7 +34,7 @@ class SchemaInferenceResults(BaseModel):
     notes: Optional[str] = Field(default_factory=str)
 
 class RefinementResults(BaseModel):
-    cleaned_values: List[Optional[Any]]
+    cleaned_values: List[List[Any]]
     confidence: float
     refinement_attempts: float
 
@@ -52,6 +52,13 @@ class ColSample(BaseModel):
     unique_preview: List[Any] = Field(default_factory=list)
     row_count: int
     note: str | None = "Values truncated for token budget"
+
+class ImagoState(BaseModel):
+    outDir: str = Field(default_factory=str)
+    PDFout: bool = Field(default_factory=bool)
+    report_html_path: Optional[str] = Field(default_factory=str)
+    report_pdf_path: Optional[str] = Field(default_factory=str)
+    OutputCSV: Optional[str] = Field(default_factory=str)
 
 class tracker(BaseModel):
     processed_column : List[str] = Field(default_factory=list)
@@ -95,4 +102,5 @@ class MetaMorphState(BaseModel):
     refinement_results: Optional[RefinementResults] = None
     validator_data: Optional[ValidatorData] = None
     Node_Col_Tracker: Annotated[tracker, merge_tracker] = Field(default_factory=tracker)
+    #ImagoContext: ImagoState = Field(default_factory=ImagoState)
 

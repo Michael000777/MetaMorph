@@ -1,7 +1,7 @@
 import sys
 from pathlib import Path
-from pydantic import BaseModel, Field, constr, confloat
-from typing import Annotated, Sequence, List, Literal
+from pydantic import BaseModel, Field, ConfigDict
+from typing import Annotated, Sequence, List, Literal, Dict, Optional, Union
 from langgraph.types import Command
 from datetime import datetime, timezone
 import json
@@ -17,48 +17,34 @@ llm = get_llm()
 
 parser_prompt = get_prompt("parser_prompt")
 
-ConfidenceFloat = Annotated[float, Field(ge=0.0, le=1.0)]
-LongStr = Annotated[str, Field(min_length=10, strip_whitespace=True)]
+#ConfidenceFloat = Annotated[float, Field(ge=0.0, le=1.0)]
+#LongStr = Annotated[str, Field(min_length=10, strip_whitespace=True)]
+
+JSONScalar = Union[str, int, float, bool, None]
+
+
+class ColumnMap(BaseModel):
+    input: str = Field(..., description="Input column name.")
+    outputs: List[str] = Field(..., description="Extracted column names.")
+
 
 class StructureParserOutput(BaseModel):
-    column: str = Field(
-        ..., 
-        description=(
-            "The name of the input column that has been parsed. "
-            "Example values include: 'age_col', 'Date', 'Location', 'Strain_ID', "
-            "'Replicate', 'Inoculation_date'."
-    ),
-    json_schema_extra={"example": ["Strain_ID"]},
-    )
+    model_config = ConfigDict(extra="forbid")
 
-    parsed_col_data: List[str] = Field(
-        ..., 
-        description=(
-            "A list of parsed values corresponding to the input column. "
-            "Each element represents a value extracted or cleaned for a specific row. "
-            "Should preserve row order."
-        ),
-        json_schema_extra={"examples": [["strain_A", "strain_B", "strain_C"]]},
-    )
-
-    confidence: ConfidenceFloat = Field(
+    column: List[ColumnMap] = Field(
         ...,
-        description="A float between 0 and 1 representing the confidence level."
+        description="Mappings from the input column to extracted columns."
     )
-
-    notes: LongStr = Field(
-        ..., 
+    parsed_col_data: List[List[JSONScalar]] = Field(
+        ...,
         description=(
-            "Detailed justification or rationale for the parsing results. "
-            "Explain how the machine-readable output was derived from the original column, "
-            "including any assumptions, heuristics, or rules applied."
-        ),
-        json_schema_extra={"examples": [
-            "Parsed the 'Strain_ID' column by splitting on underscores and extracting strain identifiers. "
-            "Filtered out replicates and control labels."
-        ]},   
-        )
-    
+            "Columns-first matrix. Outer list length = K (extracted columns). "
+            "Each inner list length = N (rows), row order preserved."),
+    )
+    confidence: float = Field(..., ge=0.0, le=1.0,
+        description="Confidence in [0,1].")
+    notes: str = Field(..., min_length=1,
+        description="Rationale for parsing decisions.")
 
 
 
@@ -92,7 +78,11 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
         },
     ]
 
-    response = await llm.with_structured_output(StructureParserOutput).ainvoke(messages)
+    response = await llm.with_structured_output(
+        StructureParserOutput
+        ).ainvoke(messages)
+    
+    col_dict = {m.input: m.outputs for m in response.column}
 
     print(f"--- MetaMorph Transitioning: Parser → Supervisor ---", flush=True)
 
@@ -112,11 +102,11 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
             "events_path" : [f"ParserNode@{timestamp}"]
         },
         "parsed_data_output" : {
-            "column_name" : response.column,
+            "column_name" : col_dict,
             "parsed_output" : response.parsed_col_data,
             "model_confidence" : response.confidence,
             "notes" : response.notes
-        }  
+        },  
     }
     
 
