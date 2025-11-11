@@ -11,6 +11,7 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from utils.llm import get_llm
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState, parsedData
+from utils.tools import normalize_to_colmatrix
 
 
 llm = get_llm()
@@ -92,6 +93,8 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
     curr_col = state.input_column_data.column_name
 
+    normParsed = normalize_to_colmatrix(response.parsed_col_data)
+
     P_PATCH = { 
         "Node_Col_Tracker" : { 
             "node_path" : {
@@ -103,7 +106,7 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
         },
         "parsed_data_output" : {
             "column_name" : col_dict,
-            "parsed_output" : response.parsed_col_data,
+            "parsed_output" : normParsed, #response.parsed_col_data,
             "model_confidence" : response.confidence,
             "notes" : response.notes
         },  

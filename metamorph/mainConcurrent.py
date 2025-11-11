@@ -3,6 +3,7 @@ from pydantic import BaseModel
 import asyncio
 from datetime import datetime, timezone
 import sys
+import os
 import pandas as pd
 from pathlib import Path
 from langgraph.graph import StateGraph
@@ -14,6 +15,7 @@ from schema_inference import schema_inference_node
 from meta_parser import parser_node
 from refinement import refinement_agent
 from validator import validator_node
+from imagoScribe import summarizeTransformations, html_template
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -139,6 +141,7 @@ async def run_all(dataset_id: str, columns: Dict[str, list], max_concurrency=5) 
     )
 
 #>>>>>> Testing <<<<<<<<
+stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
 CleanedData = asyncio.run(run_all(
     "DatasetAlpha",
@@ -146,5 +149,14 @@ CleanedData = asyncio.run(run_all(
     "age_years": [34, 58, None, 45, 29, 72]},
 ))
 
-print(CleanedData.model_dump())
+#print(CleanedData.model_dump())
+report_md = summarizeTransformations(CleanedData.model_dump())
+print(report_md)
+
+with open(f"MetaMorph_Report_{stamp}.md", "w", encoding="utf-8") as f:
+    f.write(report_md)
+
+html_report = html_template.render(**CleanedData.model_dump())
+with open(f"MetaMorph_Report_{stamp}.html", "w") as f:
+    f.write(html_report)
 

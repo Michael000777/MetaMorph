@@ -9,6 +9,8 @@ from langchain_core.messages import HumanMessage
 from langgraph.types import Command
 from utils.MetaMorphState import MetaMorphState, RefinementResults, tracker
 
+from utils.tools import normalize_to_colmatrix
+
 llm = get_llm()
 refinement_prompt = get_prompt("refinement_prompt")
 
@@ -22,17 +24,17 @@ class Refinement(BaseModel):
 async def refinement_agent(state: MetaMorphState) -> Command:
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    parsed = state.parsed_data_output
+    parsed = state.parsed_data_output.parsed_output
     schema = state.schema_inference
-    raw = state.input_column_data
+    raw = state.input_column_data.values
 
     # Combine all context into one user message
     # Do we ignore passing raw inputs into the refiner again? token management
     #Now that we have the possibility of multiple columns per col do we pass all at once? yes for now as we don't want to pass raw and SI redundantly 
 
     user_message = (
-        f"Original metadata column: {(raw.model_dump() if raw else {})}\n\n"
-        f"Initial parsed values: {(parsed.model_dump() if parsed else {})}\n\n"
+        f"Original metadata column: {(raw if raw else {})}\n\n"
+        f"Initial parsed values: {(parsed if parsed else {})}\n\n"
         f"Schema inference: {(schema.model_dump() if schema else {})}"
         )
 
@@ -53,7 +55,7 @@ async def refinement_agent(state: MetaMorphState) -> Command:
         )
         
     # Enforce row alignment with the source column
-    expected = len(raw.values)
+    expected = len(raw)
     vals = list(result.refined_values)
 
     for new_col in vals: #updated to accomodate multiple columns.
@@ -70,13 +72,17 @@ async def refinement_agent(state: MetaMorphState) -> Command:
 
     print(f"Refined values: {vals}\nNotes: {result.notes}", flush=True)
 
+    NormVals = normalize_to_colmatrix(vals)
+    print(f"Refined Normalized values: {NormVals}", flush=True)
+
+
     # Read previous attempt count safely from Pydantic state
     prev = getattr(state, "refinement_results", None)
     prev_attempts = getattr(prev, "refinement_attempts", 0) if prev else 0
 
     # Produce a proper RefinementResults object (matches MetaMorphState schema)
     new_refinement = RefinementResults(
-        cleaned_values=vals,
+        cleaned_values=NormVals,
         confidence=result.confidence, #replaced default 1 with model derived confidence.
         refinement_attempts=prev_attempts + 1,
     )
