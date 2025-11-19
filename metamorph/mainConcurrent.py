@@ -21,7 +21,6 @@ from imagoScribe import summarizeTransformations, html_template
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 
-
 from utils.thread import generate_thread_id
 from utils.MetaMorphState import tracker, MetaMorphState, InputColumnData
 from utils.tools import get_key, get_attr_or_item
@@ -80,7 +79,7 @@ async def colRunner(app, dataset_id: str, col_name: str, col_values: list, col_s
         TransformedData = get_attr_or_item(Refined, "cleaned_values")
         ModelConfidence = get_attr_or_item(Refined, "confidence", 0.0)
         
-        #print(f"ColNames: {ColumnNames}\n")
+
         ColumnNames 
 
         return FinalDataSummary(
@@ -140,6 +139,7 @@ async def run_all(dataset_id: str, columns: Dict[str, list], max_concurrency=5) 
         colData=col_summaries,
     )
 
+'''
 #>>>>>> Testing <<<<<<<<
 stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
@@ -155,6 +155,14 @@ CleanedData = asyncio.run(
 )
 """
 
+"""
+CleanedData = asyncio.run(run_all(
+    "DatasetAlpha",
+    {"patient_id": ["P001","P002","P003","P004","P005","P006"],
+    "age_years": [34, 58, None, 45, 29, 72]},
+))
+"""
+
 csv_path = Path(__file__).resolve().parent.parent /"data"/"data1.csv"
 df = pd.read_csv(csv_path)
 columns = {col: df[col].tolist() for col in df.columns}
@@ -165,13 +173,6 @@ CleanedData = asyncio.run(run_all(
 
 ))
 
-"""
-CleanedData = asyncio.run(run_all(
-    "DatasetAlpha",
-    {"patient_id": ["P001","P002","P003","P004","P005","P006"],
-    "age_years": [34, 58, None, 45, 29, 72]},
-))
-"""
 
 #print(CleanedData.model_dump())
 report_md = summarizeTransformations(CleanedData.model_dump())
@@ -183,4 +184,79 @@ with open(f"MetaMorph_Report_{stamp}.md", "w", encoding="utf-8") as f:
 html_report = html_template.render(**CleanedData.model_dump())
 with open(f"MetaMorph_Report_{stamp}.html", "w") as f:
     f.write(html_report)
+
+'''
+
+if __name__ == "__main__":
+    import argparse
+    import pandas as pd
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(
+        description="Run MetaMorph concurrently on a dataset and generate a report."
+    )
+    parser.add_argument(
+        "--input", "-i",
+        required=True,
+        help="Path to CSV file to process."
+    )
+    parser.add_argument(
+        "--dataset-id", "-d",
+        help="Optional dataset identifier. Defaults to the input filename stem."
+    )
+    parser.add_argument(
+        "--outdir", "-o",
+        default=".",
+        help="Output directory for the generated report files."
+    )
+    parser.add_argument(
+        "--max-concurrency",
+        type=int,
+        default=5,
+        help="Maximum number of columns to process concurrently."
+    )
+    args = parser.parse_args()
+
+    csv_path = Path(args.input).resolve()
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Input file not found: {csv_path}")
+
+    # Load the CSV
+    df = pd.read_csv(csv_path)
+
+    # Build the columns dictionary expected by run_all
+    columns = {col: df[col].tolist() for col in df.columns}
+
+    dataset_id = args.dataset_id or csv_path.stem
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+
+    # Run MetaMorph concurrently on all columns
+    cleaned_data = asyncio.run(
+        run_all(
+            dataset_id=dataset_id,
+            columns=columns,
+            max_concurrency=args.max_concurrency,
+        )
+    )
+
+    # Summarize transformations and generate reports
+    summary_dict = cleaned_data.model_dump()
+    report_md = summarizeTransformations(summary_dict)
+    print(report_md)
+
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    md_path = outdir / f"MetaMorph_Report_{dataset_id}_{stamp}.md"
+    html_path = outdir / f"MetaMorph_Report_{dataset_id}_{stamp}.html"
+
+    with open(md_path, "w", encoding="utf-8") as f:
+        f.write(report_md)
+
+    html_report = html_template.render(**summary_dict)
+    with open(html_path, "w", encoding="utf-8") as f:
+        f.write(html_report)
+
+    print(f"\nMarkdown report written to: {md_path}")
+    print(f"HTML report written to:     {html_path}")
 
