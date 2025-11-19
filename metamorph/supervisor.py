@@ -8,6 +8,7 @@ from typing import Annotated, Sequence, List, Literal
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langgraph.graph import StateGraph, START, END, MessagesState
 from langgraph.types import Command
+from langgraph.graph import END
 from datetime import datetime, timezone
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -73,6 +74,21 @@ async def supervisor_node(state: MetaMorphState) -> Command[Literal["schema_infe
     print(f"--- MetaMorph Transitioning: Supervisor → {goto.upper()} ---") #Key for initial validation, and see transitional steps.
 
     
+
+    #Guard: if this column has already been through Validator, stop here.
+    tracker_state = getattr(state, "Node_Col_Tracker", None)
+    if tracker_state is not None:
+        node_path = getattr(tracker_state, "node_path", {}) or {}
+        col_path = node_path.get(curr_col, {})
+
+        # Look for any validator-type key for this column
+        if any(k.lower().startswith("validator") for k in col_path.keys()):
+            print(
+                f"Supervisor: column '{curr_col}' already validated; ending workflow.",
+                flush=True,
+            )
+            return Command(update={}, goto=END)
+
 
     SUP_PATCH = { 
         "Node_Col_Tracker" : { 
