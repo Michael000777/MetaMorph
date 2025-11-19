@@ -143,11 +143,35 @@ async def run_all(dataset_id: str, columns: Dict[str, list], max_concurrency=5) 
 #>>>>>> Testing <<<<<<<<
 stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
 
+"""
+from data.data3 import camera_storage_moderate
+
+
+CleanedData = asyncio.run(
+    run_all(
+        "CameraStorageModerate",
+        camera_storage_moderate,
+    )
+)
+"""
+
+csv_path = Path(__file__).resolve().parent.parent /"data"/"data1.csv"
+df = pd.read_csv(csv_path)
+columns = {col: df[col].tolist() for col in df.columns}
+
+CleanedData = asyncio.run(run_all(
+    "data1",
+    columns,
+
+))
+
+"""
 CleanedData = asyncio.run(run_all(
     "DatasetAlpha",
     {"patient_id": ["P001","P002","P003","P004","P005","P006"],
     "age_years": [34, 58, None, 45, 29, 72]},
 ))
+"""
 
 #print(CleanedData.model_dump())
 report_md = summarizeTransformations(CleanedData.model_dump())

@@ -48,8 +48,14 @@ def determine_route(decision: str, retry_count: int = 0) -> str:
         return END #Using this for now; need to update with either end_pass or end_fail for more visibility.
     elif decision == "retry" and retry_count < MAX_RETRIES:
         return "refinement_agent"  # name of the retry target
+
+
+    print(f"Validator: decision '{decision}' → END", flush=True)
+    return END
+    """
     else:
         return "supervisor"
+    """
 
 async def validator_node(state: MetaMorphState) -> Command:
     global retry_count
@@ -122,7 +128,7 @@ async def validator_node(state: MetaMorphState) -> Command:
         #"messages": [HumanMessage(content=reason, name="validator")],
         #"validation_confidence": conf,
         #"retry_count": getattr(state, "retry_count", 0) + (1 if decision == "retry" else 0),
-        "Node_Col_tracker": V_PATCH,
+        "Node_Col_Tracker": V_PATCH,
     },
     goto=route,
 )
