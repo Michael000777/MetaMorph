@@ -1,17 +1,18 @@
 #Validator agent implementation.
 
-
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Literal, List, Optional
 from utils.llm import get_llm
 from utils.prompts import get_prompt
 from langchain_core.messages import HumanMessage
 from langgraph.graph import START, END, MessagesState
 from langgraph.types import Command
-from utils.MetaMorphState import ValidatorData, MetaMorphState
+from utils.MetaMorphState import ValidatorData, MetaMorphState, tracker
 
 
 MAX_RETRIES = 5
+retry_count = 0
 
 validator_prompt = get_prompt("validator_prompt")
 llm = get_llm()
@@ -31,22 +32,40 @@ class ValidatorLLMOutput(BaseModel):
         description="Confidence score for this decision (0–1)"
 
     )
+
+    failed_rows_indices: List[int] = Field(..., 
+                                                     description=(
+            "A list of row indices that failed when comparing raw values to the transformed values and need to be corrected"
+    ),
+    json_schema_extra={"example": [0,67,127]},
+    )
     
 
 
 def determine_route(decision: str, retry_count: int = 0) -> str:
+
     if decision == "pass":
-        return "__end__"
+        return END #Using this for now; need to update with either end_pass or end_fail for more visibility.
     elif decision == "retry" and retry_count < MAX_RETRIES:
         return "refinement_agent"  # name of the retry target
+
+
+    print(f"Validator: decision '{decision}' → END", flush=True)
+    return END
+    """
     else:
         return "supervisor"
+    """
 
 async def validator_node(state: MetaMorphState) -> Command:
+    global retry_count
+    timestamp = datetime.now(timezone.utc).isoformat()
+
     raw = getattr(state, "input_column_data", None)
     refined = getattr(state, "refinement_results", None)
     parsed = getattr(state, "parsed_data_output", None)
-    retry_count = getattr(state, "retry_count", 0)
+    #retry_count = getattr(state, "retry_count", 0) #there is no retry_count attr in state so i will update this.
+
 
 
     input_vals = (raw.values if raw else []) or []
@@ -70,35 +89,46 @@ async def validator_node(state: MetaMorphState) -> Command:
     ]
     
     # Initialize defaults so later code never references undefined names
-    decision, reason, conf = None, None, 0.0
+    decision, reason, conf, failed_rows = None, None, 0.0, []
 
     try:
         res = await llm.with_structured_output(
             ValidatorLLMOutput, method="function_calling"
         ).ainvoke(messages)
-        decision, reason, conf = res.decision, res.reason, res.confidence
+        decision, reason, conf, failed_rows = res.decision, res.reason, res.confidence, res.failed_rows_indices
     except Exception as e:
         # Fallback behavior on LLM failure: treat as retry (bounded by MAX_RETRIES)
         decision = "retry" if retry_count < MAX_RETRIES else "fail"
         reason = f"Validator LLM error: {e}"
         conf = 0.0
 
-    print(f"Validation: {decision.upper()} — {reason}")
+    print(f"Validation: {decision.upper()} — {reason}", flush=True)
 
     route = determine_route(decision, getattr(state, "retry_count", 0))
+    
+    #Tracker patch (merged by Node_Col_tracker
+    curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
+    V_PATCH = {
+        "processed_column": [curr_col],
+         "node_path": {curr_col: {"validator": decision}},
+         "events_path" : [f"ValidatorNode@{timestamp}"]
+        # "events_path": [f"Validator → {('Refinement' if decision=='retry' else 'End' if decision=='pass' else 'Supervisor')}"]
+     }
 
-
+    if decision == "retry":
+        retry_count += 1
 
     return Command(
     update={
         "validator_data": ValidatorData(
             passed=(decision == "pass"),
-            failed_rows=[], #populate if you have add row level checks
+            failed_rows=failed_rows, #I added in the row level checks.
             message=reason,
         ),
-        "messages": [HumanMessage(content=reason, name="validator")],
-        "validation_confidence": conf,
-        "retry_count": getattr(state, "retry_count", 0) + (1 if decision == "retry" else 0),
+        #"messages": [HumanMessage(content=reason, name="validator")],
+        #"validation_confidence": conf,
+        #"retry_count": getattr(state, "retry_count", 0) + (1 if decision == "retry" else 0),
+        "Node_Col_Tracker": V_PATCH,
     },
     goto=route,
 )
