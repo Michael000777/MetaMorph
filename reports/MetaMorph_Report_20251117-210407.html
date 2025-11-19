@@ -1,0 +1,125 @@
+
+<h1>MetaMorph Report — DatasetAlpha</h1>
+<p><b>Start:</b> 2025-11-18T02:04:07.506654+00:00<br>
+<b>End:</b> 2025-11-18T02:04:23.877529+00:00<br>
+<b>Success:</b> 1 &nbsp; <b>Failed:</b> 1</p>
+
+
+<hr>
+<h2>patient_id</h2>
+
+<p>
+<b>Confidence:</b> 0.95
+&nbsp;|&nbsp;
+<b>Status:</b> SUCCESS
+</p>
+
+<p><b>Agents:</b>
+
+  
+    SupervisorNode → 
+  
+    SchemaInferenceNode → 
+  
+    SupervisorNode → 
+  
+    ParserNode → 
+  
+    SupervisorNode → 
+  
+    RefinementNode
+  
+
+</p>
+
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th>Node</th><th>Notes</th></tr>
+  
+  
+    <tr><td>SupervisorNode</td><td>The column has already undergone schema inference and parsing steps, indicating that its type is likely determined and raw strings have been extracted or standardized into structured values. The next logical step is refinement, which would address issues like data cleaning, normalization, and handling any inconsistencies such as missing values, category unification, or range validation, if such inconsistencies were exposed by the parsing process.</td></tr>
+  
+    <tr><td>SchemaInferenceNode</td><td>The column values all share a consistent 'P###' pattern which is typical for IDs. The uniqueness across the sample indicates an identifying field, not a categorical or free text type. The confidence is slightly reduced due to the small sample size but remains high due to the pattern consistency.</td></tr>
+  
+    <tr><td>ParserNode</td><td>The raw values are already in a clean and standard ID format ('P###'), consistent with the inferred type. No transformation was necessary as these values are already machine-readable and maintain a consistent pattern indicating individual identifiers.</td></tr>
+  
+    <tr><td>refinement</td><td>The initial parsed values align with the schema inference as unique identifiers given their consistent 'P###' pattern. No changes were necessary as they already meet the expected ID format and there are no duplicates or formatting issues to address. The ID pattern and uniqueness strongly suggest they're identifiers, hence retaining high confidence.</td></tr>
+  
+  
+</table>
+
+<p>
+<b>Columns:</b>
+
+patient_id<br>
+
+
+
+
+<b>Shape:</b> 6 rows × 1 col(s)<br>
+
+<b>Preview:</b>
+
+  
+    P001, 
+  
+    P002, 
+  
+    P003, 
+  
+    P004, 
+  
+    P005
+  
+
+</p>
+
+
+
+
+<hr>
+<h2>age_years</h2>
+
+<p>
+<b>Confidence:</b> 0.00
+&nbsp;|&nbsp;
+<b>Status:</b> FAILED
+</p>
+
+<p><b>Agents:</b>
+
+  —
+
+</p>
+
+<table border="1" cellspacing="0" cellpadding="4">
+  <tr><th>Node</th><th>Notes</th></tr>
+  
+  
+  
+    <tr><td colspan="2"><i>No node summaries available</i></td></tr>
+  
+</table>
+
+<p>
+<b>Columns:</b>
+
+—<br>
+
+
+
+
+<b>Shape:</b> 0 rows × 0 col(s)<br>
+
+<b>Preview:</b>
+
+  —
+
+</p>
+
+
+  <p style="color:#b00020;"><b>Error:</b> ValidationError: 1 validation error for FinalDataSummary
+TransformedValues
+  Input should be a valid list [type=list_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/list_type</p>
+
+
