@@ -8,7 +8,7 @@ import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from utils.llm import get_llm
+from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState, parsedData
 from utils.tools import normalize_to_colmatrix
@@ -79,9 +79,12 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
         },
     ]
 
-    response = await llm.with_structured_output(
-        StructureParserOutput
-        ).ainvoke(messages)
+    #response = await llm.with_structured_output(
+    #    StructureParserOutput
+     #   ).ainvoke(messages)
+    
+    r = llm.with_structured_output(StructureParserOutput)
+    response = await ainvoke_with_backoff(r, messages)
     
     col_dict = {m.input: m.outputs for m in response.column}
 

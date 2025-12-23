@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from utils.llm import get_llm
+from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState
 
@@ -52,7 +52,9 @@ async def supervisor_node(state: MetaMorphState) -> Command[Literal["schemaInfer
         {"role": "user", "content" : event_context}
     ]
 
-    response = await llm.with_structured_output(Supervisor).ainvoke(messages)
+    r = llm.with_structured_output(Supervisor)
+    response = await ainvoke_with_backoff(r, messages)
+    #response = await llm.with_structured_output(Supervisor).ainvoke(messages)
 
     goto = response.next
     reason = response.justification

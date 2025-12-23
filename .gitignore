@@ -213,3 +213,7 @@ plan/
 planning/
 
 **/*.db
+
+data/
+**/data/**
+**Reports/

@@ -57,6 +57,7 @@ def summarizeTransformations(Res):
 
     return "\n".join(lines)
 
+#old will remove later
 html_template = Template("""
 <h1>MetaMorph Report — {{ dataset_id }}</h1>
 <p><b>Start:</b> {{ started_at }}<br>
