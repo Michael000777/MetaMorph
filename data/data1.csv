@@ -1,0 +1,11 @@
+record_id,height,weight,visit_date,temperature,category,comments
+001,5ft 10in,180 lbs,2024/10/03,98.6F,A,first visit
+P-02,170 cm,75kg,03-10-2024,37C,B,"   follow-up   "
+003,6'2",unknown,2024-10-04,,A,"N/A"
+004,1.75m,165 lbs,10/05/24,100.1 F,c,none
+005,5’9”,72 KG,05 Oct 2024,36.9 C,A,"patient said: ""I feel fine"""
+PAT-006,about 5 ft 8,150lbs,2024.10.06,99 F,b,"   "
+007,5 ft,68kg,Oct 7 2024,,C,???
+008,,81 kg,20241008,38 C,b,"lost height?"
+009,5′11″,180lb,2024/10/09,102F,A,"   dizziness reported "
+010,"~ 6 ft","84  kilograms",10-10-2024,39.1c,Other,""

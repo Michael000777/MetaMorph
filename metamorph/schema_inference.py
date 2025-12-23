@@ -29,28 +29,21 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    payload = json.dumps(
-        state.ColumnSample.model_dump(mode="json", exclude=None),
-        ensure_ascii=False, separators=(",", ":"), default=str
-        )
-
     messages = [
         {"role": "system", "content": schema_system_prompt},
         {
             "role": "user",
-            "content": payload
+
+            # HumanMessage.content must be str or content blocks; serialize dict
+            "content": json.dumps(state.ColumnSample.model_dump(), ensure_ascii=False)
         } 
     ]
 
-    response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
+    response = await llm.with_structured_output(SchemaInference, method="function_calling").ainvoke(messages)
 
     curr_col = state.input_column_data.column_name
 
-    print(f"--- MetaMorph Transitioning: Schema Inference → Supervisor ---", flush=True)
-
-    print(f"Inferred Schema: {response.Inferred_type}", flush=True)
-    print(f"Confidence: {response.conf}", flush=True)
-    print(f"Notes: {response.reason}", flush=True)
+    print(f"--- MetaMorph Transitioning: Schema Inference → Supervisor ---")
 
 
     SI_PATCH = {
@@ -71,6 +64,6 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
 
     return Command(
         update=SI_PATCH,
-        goto="supervisor"
+        goto="parser_agent"  # name of the next node to transition to
     )
 
