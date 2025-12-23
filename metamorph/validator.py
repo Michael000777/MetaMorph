@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from typing import Literal, List, Optional
-from utils.llm import get_llm
+from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from langchain_core.messages import HumanMessage
 from langgraph.graph import START, END, MessagesState
@@ -86,9 +86,13 @@ async def validator_node(state: MetaMorphState) -> Command:
     decision, reason, conf, failed_rows = None, None, 0.0, []
 
     try:
-        res = await llm.with_structured_output(
-            ValidatorLLMOutput, method="function_calling"
-        ).ainvoke(messages)
+        #res = await llm.with_structured_output(
+         #   ValidatorLLMOutput, method="function_calling"
+        #).ainvoke(messages)
+
+        r = llm.with_structured_output(ValidatorLLMOutput, method="function_calling")
+        res = await ainvoke_with_backoff(r, messages)
+
         decision, reason, conf, failed_rows = res.decision, res.reason, res.confidence, res.failed_rows_indices
     except Exception as e:
         # Fallback behavior on LLM failure: treat as retry (bounded by MAX_RETRIES)

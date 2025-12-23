@@ -8,7 +8,7 @@ import json
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 
-from utils.llm import get_llm
+from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState, SchemaInferenceResults
 
@@ -42,7 +42,10 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
         } 
     ]
 
-    response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
+    r = llm.with_structured_output(SchemaInference)
+    response = await ainvoke_with_backoff(r, messages)
+
+    #response = await llm.with_structured_output(SchemaInference).ainvoke(messages)
 
     curr_col = state.input_column_data.column_name
 

@@ -1,9 +1,9 @@
 # Refinement.py implementatiion
 
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Union
-from utils.llm import get_llm
+from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from langchain_core.messages import HumanMessage
 from langgraph.types import Command
@@ -20,6 +20,14 @@ class Refinement(BaseModel):
     refined_values: List[List[JSONScalar]] = Field(..., description="Cleaned, final metadata values")
     confidence: float = Field(..., ge=0.0, le=1.0)
     notes: str = Field(None, description="Explanation of changes or logic applied")
+
+    @field_validator("refined_values", mode="before")
+    @classmethod
+    def coerce_1d_to_2d(cls, v):
+        if isinstance(v, list) and (len(v) == 0 or not isinstance(v[0], list)):
+            return [v]
+        return v
+
 
 async def refinement_agent(state: MetaMorphState) -> Command:
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -44,7 +52,9 @@ async def refinement_agent(state: MetaMorphState) -> Command:
     ]
 
     try:
-        result = await llm.with_structured_output(Refinement, method="function_calling").ainvoke(messages)
+        r = llm.with_structured_output(Refinement, method="function_calling")
+        result = await ainvoke_with_backoff(r, messages)
+        #result = await llm.with_structured_output(Refinement, method="function_calling").ainvoke(messages)
     except Exception as e:
         print(f"Refinement agent failed: {e}", flush=True)
         return Command(
@@ -58,11 +68,11 @@ async def refinement_agent(state: MetaMorphState) -> Command:
     expected = len(raw)
     vals = list(result.refined_values)
 
-    for new_col in vals: #updated to accomodate multiple columns.
-        if len(new_col) < expected:
-            new_col += [None] * (expected - len(new_col))
-        elif len(new_col) > expected:
-            new_col = new_col[:expected]
+    for i, col_vals in enumerate(vals):
+        if len(col_vals) < expected:
+            vals[i] = col_vals + [None] * (expected - len(col_vals))
+        elif len(col_vals) > expected:
+            vals[i] = col_vals[:expected]
         
     
     
