@@ -6,13 +6,25 @@ from dotenv import load_dotenv
 import asyncio
 import random
 from openai import RateLimitError, APIError, APITimeoutError
+import os
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-4o")
+_LLM_MODEL = None
+_LLM_INSTANCE = None
 
-def get_llm() -> Runnable:
-    return llm
+def set_llm_model(model_name: str):
+    global _LLM_MODEL, _LLM_INSTANCE
+    _LLM_MODEL = model_name
+    _LLM_INSTANCE = None  # reset if model changes
+
+def get_llm():
+    global _LLM_INSTANCE
+    if not _LLM_MODEL:
+        raise ValueError("LLM model not set. Call set_llm_model(...) before get_llm().")
+    if _LLM_INSTANCE is None:
+        _LLM_INSTANCE = ChatOpenAI(model=_LLM_MODEL, temperature=0)
+    return _LLM_INSTANCE
 
 
 #dynamic implementation, say user wants groq over chatgpt
