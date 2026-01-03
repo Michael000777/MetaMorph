@@ -7,16 +7,11 @@ import os
 import pandas as pd
 from pathlib import Path
 from langgraph.graph import StateGraph
-from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+#from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 import argparse
 
 
-from supervisor import supervisor_node
-from schema_inference import schema_inference_node
-from meta_parser import parser_node
-from refinement import refinement_agent
-from validator import validator_node
-from imagoScribe import summarizeTransformations
+
 
 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -30,16 +25,7 @@ from utils.ScribeTemplate import html_template
 from input import build_sample_data
 
 
-graph = StateGraph(MetaMorphState)
 
-graph.add_node("supervisor", supervisor_node)
-graph.add_node("schemaInference", schema_inference_node)
-graph.add_node("parser_agent", parser_node)
-graph.add_node("refinement_agent", refinement_agent)
-graph.add_node("validator_agent", validator_node)
-
-
-graph.set_entry_point("supervisor")
 
 JSONScalar = Union[str, int, float, bool, None]
 
@@ -101,7 +87,7 @@ async def colRunner(app, dataset_id: str, col_name: str, col_values: list, col_s
             error=f"{type(e).__name__}: {e}",
         )
     
-async def run_all(dataset_id: str, columns: Dict[str, list], max_concurrency=5) -> DatasetSummary:
+async def run_all(graph, dataset_id: str, columns: Dict[str, list], max_concurrency=5) -> DatasetSummary:
 
     #cp = AsyncSqliteSaver.from_conn_string("metamorph.db")
 
@@ -252,8 +238,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--outdir", "-o",
-        default="./Reports/",
+        #default="./Reports/",
         help="Output directory for the generated report files."
+    )
+    parser.add_argument(
+        "--llm", "-l",
+        type=str,
+        default="gpt-5-nano",
+        help="OpenAI LLM model to use"
     )
     parser.add_argument(
         "--max-concurrency",
@@ -262,6 +254,29 @@ if __name__ == "__main__":
         help="Maximum number of columns to process concurrently."
     )
     args = parser.parse_args()
+    
+    from utils.llm import set_llm_model
+    set_llm_model(args.llm)
+    
+    from utils.llm import get_llm
+    print("Using model:", get_llm().model_name)
+    
+    from supervisor import supervisor_node
+    from schema_inference import schema_inference_node
+    from meta_parser import parser_node
+    from refinement import refinement_agent
+    from validator import validator_node
+    from imagoScribe import summarizeTransformations
+    
+    graph = StateGraph(MetaMorphState)
+
+    graph.add_node("supervisor", supervisor_node)
+    graph.add_node("schemaInference", schema_inference_node)
+    graph.add_node("parser_agent", parser_node)
+    graph.add_node("refinement_agent", refinement_agent)
+    graph.add_node("validator_agent", validator_node)
+
+    graph.set_entry_point("supervisor")
 
     csv_path = Path(args.input).resolve()
     if not csv_path.exists():
@@ -277,6 +292,7 @@ if __name__ == "__main__":
     # Running METAMORPH on all columns 
     cleaned_data = asyncio.run(
         run_all(
+            graph=graph,
             dataset_id=dataset_id,
             columns=columns,
             max_concurrency=args.max_concurrency,

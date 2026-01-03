@@ -16,7 +16,7 @@ from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState
 
-llm = get_llm()
+#llm = get_llm()
 
 Supervisor_system_prompt = get_prompt("Supervisor_system_prompt")
 
@@ -51,6 +51,7 @@ async def supervisor_node(state: MetaMorphState) -> Command[Literal["schemaInfer
         {"role": "system", "content": Supervisor_system_prompt},
         {"role": "user", "content" : event_context}
     ]
+    llm = get_llm()
 
     r = llm.with_structured_output(Supervisor)
     response = await ainvoke_with_backoff(r, messages)
