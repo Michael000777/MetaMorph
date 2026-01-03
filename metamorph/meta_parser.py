@@ -14,7 +14,7 @@ from utils.MetaMorphState import MetaMorphState, parsedData
 from utils.tools import normalize_to_colmatrix
 
 
-llm = get_llm()
+#llm = get_llm()
 
 parser_prompt = get_prompt("parser_prompt")
 
@@ -82,6 +82,7 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
     #response = await llm.with_structured_output(
     #    StructureParserOutput
      #   ).ainvoke(messages)
+    llm = get_llm()
     
     r = llm.with_structured_output(StructureParserOutput)
     response = await ainvoke_with_backoff(r, messages)
