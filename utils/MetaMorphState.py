@@ -41,6 +41,7 @@ class RefinementResults(BaseModel):
 class ValidatorData(BaseModel):
     passed: bool
     failed_rows: List[int]
+    retry_count: int = 0
     message: Optional[str] = None
 
 class ColSample(BaseModel):

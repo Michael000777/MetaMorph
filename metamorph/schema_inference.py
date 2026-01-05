@@ -12,7 +12,7 @@ from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from utils.MetaMorphState import MetaMorphState, SchemaInferenceResults
 
-llm = get_llm()
+#llm = get_llm()
 
 schema_system_prompt = get_prompt("schema_inference_prompt")
 
@@ -26,6 +26,7 @@ class SchemaInference(BaseModel):
 
 
 async def schema_inference_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
+    
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -41,6 +42,7 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
             "content": payload
         } 
     ]
+    llm = get_llm()
 
     r = llm.with_structured_output(SchemaInference)
     response = await ainvoke_with_backoff(r, messages)

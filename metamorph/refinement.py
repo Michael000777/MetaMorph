@@ -11,7 +11,7 @@ from utils.MetaMorphState import MetaMorphState, RefinementResults, tracker
 
 from utils.tools import normalize_to_colmatrix
 
-llm = get_llm()
+#llm = get_llm()
 refinement_prompt = get_prompt("refinement_prompt")
 
 JSONScalar = Union[str, int, float, bool, None]
@@ -50,6 +50,7 @@ async def refinement_agent(state: MetaMorphState) -> Command:
         {"role": "system", "content": refinement_prompt},
         {"role": "user", "content": user_message}
     ]
+    llm = get_llm()
 
     try:
         r = llm.with_structured_output(Refinement, method="function_calling")
