@@ -121,7 +121,7 @@ async def validator_node(state: MetaMorphState) -> Command:
             passed=(decision == "pass"),
             failed_rows=failed_rows, #I added in the row level checks.
             message=reason,
-            new_retry_count=new_retry_count,
+            retry_count=new_retry_count,
         ),
         #"messages": [HumanMessage(content=reason, name="validator")],
         #"validation_confidence": conf,
