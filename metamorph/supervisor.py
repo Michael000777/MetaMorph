@@ -66,11 +66,13 @@ async def supervisor_node(state: MetaMorphState) -> Command[Literal["schemaInfer
 
     curr_col = state.input_column_data.column_name
 
+    NodeTrackerName = f"SupervisorNode@{timestamp}"
+
     SUP_PATCH = { 
         "Node_Col_Tracker" : { 
             "node_path" : {
                 curr_col: {
-                    "SupervisorNode": reason
+                    NodeTrackerName: reason
                     }
                 },
             "events_path" : [f"SupervisorNode@{timestamp}"]

@@ -23,7 +23,7 @@ def get_llm():
     if not _LLM_MODEL:
         raise ValueError("LLM model not set. Call set_llm_model(...) before get_llm().")
     if _LLM_INSTANCE is None:
-        _LLM_INSTANCE = ChatOpenAI(model=_LLM_MODEL, temperature=0)
+        _LLM_INSTANCE = ChatOpenAI(model=_LLM_MODEL) #removed temperature.
     return _LLM_INSTANCE
 
 

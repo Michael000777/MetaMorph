@@ -57,6 +57,7 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
     print(f"Confidence: {response.conf}", flush=True)
     print(f"Notes: {response.reason}", flush=True)
 
+    NodeTrackerName = f"SchemaInferenceNode@{timestamp}"
 
     SI_PATCH = {
         "schema_inference" : {
@@ -67,7 +68,7 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
         "Node_Col_Tracker" : { 
             "node_path" : {
                 curr_col: {
-                    "SchemaInferenceNode": response.reason
+                    NodeTrackerName: response.reason
                     }
                 },
             "events_path" : [f"SchemaInferenceNode@{timestamp}"]
