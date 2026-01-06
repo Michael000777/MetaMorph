@@ -1,0 +1,2150 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🦋 MetaMorph Report — testRob</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#0f1733;
+      --panel2:#0c132b;
+      --text:#e9ecf5;
+      --muted:#aab3cf;
+      --border:rgba(255,255,255,.10);
+      --good:#23c55e;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --chip:#101a3a;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --shadow: 0 10px 30px rgba(0,0,0,.35);
+
+      /* metamorph vibe accents */
+      --glow1: rgba(124,58,237,.18);
+      --glow2: rgba(59,130,246,.14);
+      --glow3: rgba(34,197,94,.12);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background:
+        radial-gradient(1000px 800px at 20% -10%, var(--glow2), transparent 60%),
+        radial-gradient(900px 700px at 90% 10%, var(--glow1), transparent 55%),
+        radial-gradient(800px 650px at 60% 120%, var(--glow3), transparent 55%),
+        var(--bg);
+      color:var(--text);
+      line-height:1.4;
+    }
+    a{ color:#93c5fd; text-decoration:none; }
+    a:hover{ text-decoration:underline; }
+
+    .wrap{ max-width:1100px; margin:0 auto; padding:28px 18px 60px; }
+
+    .header{
+      position: sticky;
+      top:0;
+      z-index:10;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(to bottom, rgba(11,16,32,.92), rgba(11,16,32,.65));
+      border-bottom:1px solid var(--border);
+      margin:0 -18px 18px;
+      padding:18px 18px 16px;
+    }
+    .titlebar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .title{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:baseline;
+      gap:10px;
+      margin:0 0 8px;
+    }
+    h1{
+      margin:0;
+      font-size:20px;
+      letter-spacing:.2px;
+      font-weight:800;
+    }
+    .sub{
+      font-size:12px;
+      color:var(--muted);
+      font-family:var(--mono);
+    }
+
+    /* toggle for timestamps */
+    .toggles{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-top:2px;
+      color:var(--muted);
+      font-size:12px;
+      font-family:var(--mono);
+      white-space:nowrap;
+    }
+    .switch{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border:1px solid var(--border);
+      border-radius:999px;
+      background:rgba(255,255,255,.04);
+      cursor:pointer;
+      user-select:none;
+    }
+    .switch input{ display:none; }
+    .knob{
+      width:34px;
+      height:18px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.06);
+      position:relative;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+    }
+    .knob:after{
+      content:"";
+      position:absolute;
+      top:2px;
+      left:2px;
+      width:14px;
+      height:14px;
+      border-radius:50%;
+      background:rgba(255,255,255,.70);
+      transition:transform .18s ease;
+    }
+    .switch input:checked + .knob:after{
+      transform: translateX(16px);
+    }
+
+    .summary{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    @media (max-width: 820px){
+      .summary{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .kpi{
+      background:rgba(255,255,255,.04);
+      border:1px solid var(--border);
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow: 0 1px 0 rgba(255,255,255,.03) inset;
+    }
+    .kpi .label{ font-size:11px; color:var(--muted); }
+    .kpi .value{ font-size:14px; margin-top:4px; font-family:var(--mono); }
+
+    .chips{
+      display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;
+    }
+    .chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      background:var(--chip);
+      border:1px solid var(--border);
+      border-radius:999px;
+      font-size:12px;
+      color:var(--muted);
+      font-family:var(--mono);
+    }
+    .dot{ width:8px; height:8px; border-radius:50%; background:var(--muted); }
+    .dot.good{ background:var(--good); }
+    .dot.bad{ background:var(--bad); }
+
+    .grid{
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:14px;
+      margin-top:18px;
+    }
+    @media (max-width: 920px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:14px 14px 12px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      position:relative;
+    }
+    /* subtle "cocoon thread" accent */
+    .card:before{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,.06), transparent 40%),
+        repeating-linear-gradient(90deg, rgba(255,255,255,.03), rgba(255,255,255,.03) 1px, transparent 1px, transparent 18px);
+      opacity:.12;
+      mask-image: radial-gradient(500px 240px at 20% 0%, black, transparent 70%);
+    }
+
+    .cardhead{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+      position:relative;
+    }
+    .colname{
+      font-size:15px;
+      font-weight:800;
+      margin:0;
+      word-break:break-word;
+    }
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      background:rgba(255,255,255,.04);
+      font-size:12px;
+      font-family:var(--mono);
+      white-space:nowrap;
+      color:var(--muted);
+    }
+    .badge.good{ color: #bbf7d0; border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.08); }
+    .badge.bad{ color: #fecaca; border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08); }
+
+    .meta{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin: 8px 0 12px;
+      color:var(--muted);
+      font-size:12px;
+      font-family:var(--mono);
+      position:relative;
+    }
+    .meta b{ color:var(--text); font-weight:700; }
+
+    details{
+      border-top:1px dashed rgba(255,255,255,.12);
+      padding-top:10px;
+      margin-top:10px;
+    }
+    summary{
+      cursor:pointer;
+      list-style:none;
+      user-select:none;
+      font-size:12px;
+      color:var(--muted);
+      font-family:var(--mono);
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    summary::-webkit-details-marker{ display:none; }
+    summary:before{
+      content:"▸";
+      display:inline-block;
+      transform: translateY(-1px);
+      opacity:.9;
+    }
+    details[open] summary:before{ content:"▾"; }
+
+    .row{
+      display:grid;
+      grid-template-columns: 160px 1fr;
+      gap:10px;
+      margin-top:10px;
+      align-items:start;
+      position:relative;
+    }
+    @media (max-width: 560px){
+      .row{ grid-template-columns: 1fr; }
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+      overflow:hidden;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background:rgba(0,0,0,.12);
+      font-size:12px;
+    }
+    th, td{
+      padding:8px 10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      vertical-align:top;
+      word-break:break-word;
+    }
+    th{
+      text-align:left;
+      color:var(--muted);
+      font-family:var(--mono);
+      font-weight:700;
+      background:rgba(255,255,255,.03);
+    }
+    tr:last-child td{ border-bottom:none; }
+
+    .code{
+      font-family:var(--mono);
+      background: rgba(0,0,0,.20);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;
+      padding:10px 12px;
+      overflow:auto;
+      white-space:pre-wrap;
+      word-break:break-word;
+      font-size:12px;
+      color:#f3f4f6;
+      line-height:1.45;
+    }
+
+    .muted{ color:var(--muted); }
+    .small{ font-size:12px; }
+    .preview{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin-top:6px;
+    }
+    .pill{
+      font-family:var(--mono);
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.04);
+      color:var(--text);
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    /* agents breadcrumb tokens */
+    .agents-line{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      gap:6px;
+      font-family:var(--mono);
+      font-size:12px;
+    }
+    .agent{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color:#e9ecf5;
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .arrow{
+      color:rgba(255,255,255,.22);
+      font-family:var(--mono);
+      padding:0 2px;
+    }
+
+    .footer{
+      margin-top:20px;
+      color:var(--muted);
+      font-size:12px;
+      font-family:var(--mono);
+      text-align:center;
+      opacity:.9;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+
+    <div class="header">
+      <div class="titlebar">
+        <div>
+          <div class="title">
+            <h1>🦋 MetaMorph Report</h1>
+            <div class="sub">dataset_id=testRob</div>
+          </div>
+          <div class="sub">🐛 → 🧵🕸️ → 🦋 &nbsp;&nbsp;|&nbsp;&nbsp; “From raw columns to transformed structure”</div>
+        </div>
+
+        <div class="toggles">
+          <label class="switch" title="Toggle timestamps in the Agents breadcrumb (node@timestamp)">
+            <input id="toggle-ts" type="checkbox" />
+            <span class="knob"></span>
+            <span>show timestamps</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="kpi">
+          <div class="label">🥚 Started (UTC)</div>
+          <div class="value">2026-01-06T02:59:20.074513+00:00</div>
+        </div>
+        <div class="kpi">
+          <div class="label">🦋 Finished (UTC)</div>
+          <div class="value">2026-01-06T03:03:09.265190+00:00</div>
+        </div>
+        <div class="kpi">
+          <div class="label">✅ Success</div>
+          <div class="value">7</div>
+        </div>
+        <div class="kpi">
+          <div class="label">⚠️ Failed</div>
+          <div class="value">0</div>
+        </div>
+      </div>
+
+      <div class="chips">
+        <span class="chip"><span class="dot good"></span>✅ SUCCESS</span>
+        <span class="chip"><span class="dot bad"></span>❌ FAILED</span>
+        <span class="chip">🧬 columns=7</span>
+      </div>
+    </div>
+
+    <div class="grid">
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 record_id</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.90</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=1</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T02:59:20.132230+00:00"
+                        title="SupervisorNode@2026-01-06T02:59:20.132230+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T02:59:23.868724+00:00"
+                        title="SchemaInferenceNode@2026-01-06T02:59:23.868724+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T02:59:29.132895+00:00"
+                        title="SupervisorNode@2026-01-06T02:59:29.132895+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T02:59:33.193021+00:00"
+                        title="ParserNode@2026-01-06T02:59:33.193021+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T02:59:42.886589+00:00"
+                        title="SupervisorNode@2026-01-06T02:59:42.886589+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T02:59:47.804172+00:00"
+                        title="RefinementNode@2026-01-06T02:59:47.804172+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T02:59:56.848053+00:00"
+                        title="ValidatorNode@2026-01-06T02:59:56.848053+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">record_id_normalized</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">001</span>
+                
+                  <span class="pill">P-02</span>
+                
+                  <span class="pill">003</span>
+                
+                  <span class="pill">004</span>
+                
+                  <span class="pill">005</span>
+                
+                  <span class="pill">PAT-006</span>
+                
+                  <span class="pill">007</span>
+                
+                  <span class="pill">008</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:20.132230+00:00</span></td>
+                    <td>The column has not been processed at all, so its type and structure are unknown. Per the workflow policy, schema inference must run first to determine whether values are numeric, dates, categorical, mixed, or contain embedded units/compound strings. Inferring the schema will identify parsing needs and the appropriate downstream steps.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:23.868724+00:00</span></td>
+                    <td>Values are short alphanumeric identifiers (e.g., '001', 'P-02', 'PAT-006') with zero-padding, hyphenation and prefix variants, consistent with record/patient IDs rather than natural language or numeric measures. Column name 'record_id' and the sample covering all 10 rows support this; heterogenous formatting prevents asserting a stricter schema, so confidence is high but not certain.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:29.132895+00:00</span></td>
+                    <td>Schema inference has already run (Supervisor -> SchemaInference). The next earliest unmet step is parsing: the inferred schema indicates values still exist as raw/compound strings or mixed-format tokens (dates, numbers with units, compound codes, etc.) that must be extracted/standardized into structured values before refinement and validation. Therefore route to parser_agent.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:33.193021+00:00</span></td>
+                    <td>Normalization performed by extracting the contiguous digit sequence from each raw value and zero-padding to a fixed width of 3 characters. Examples: 'P-02' -> '02' -> '002', 'PAT-006' -> '006' -> '006'. Assumptions: prefixes/suffixes (e.g., 'P-', 'PAT-') are not semantically significant and all values belong to the same ID namespace; numeric component is the true identifier. If prefixes denote different namespaces or carry important meaning, this normalization will lose that information — in that case preserve the original raw values or add a separate "namespace" column. Regex/heuristic used: find first (or only) digit run [0-9]+; if none found, would return null (no such case in provided sample). Confidence lowered from perfect because of potential ambiguity about prefix semantics.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:42.886589+00:00</span></td>
+                    <td>The workflow shows SchemaInference followed by ParserNode execution, so raw strings should have been parsed into structured values. The next typical step is cleaning/normalization: coercing types, handling nulls/NaNs, unifying categories/casing, harmonizing units, clipping or flagging out-of-range values, and normalizing missing or inconsistent parsed outputs. Per the decision policy, we should not skip ahead to validation; refinement is the earliest unmet step after parsing to ensure data are consistent and ready for final checks.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:47.804172+00:00</span></td>
+                    <td>Parser incorrectly normalized prefixed IDs (e.g., 'P-02' -> '002', 'PAT-006' -> '006'). I restored the original raw ID strings and applied only minimal cleaning (trim/uppercase where needed). No zero-padding or prefix changes were made to avoid inventing values.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:56.848053+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 height</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.92</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=1</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T02:59:20.135632+00:00"
+                        title="SupervisorNode@2026-01-06T02:59:20.135632+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T02:59:23.459048+00:00"
+                        title="SchemaInferenceNode@2026-01-06T02:59:23.459048+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T02:59:29.116111+00:00"
+                        title="SupervisorNode@2026-01-06T02:59:29.116111+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T02:59:33.397686+00:00"
+                        title="ParserNode@2026-01-06T02:59:33.397686+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T02:59:50.573515+00:00"
+                        title="SupervisorNode@2026-01-06T02:59:50.573515+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T02:59:54.184772+00:00"
+                        title="RefinementNode@2026-01-06T02:59:54.184772+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T03:00:04.322818+00:00"
+                        title="ValidatorNode@2026-01-06T03:00:04.322818+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">height_cm</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">177.8</span>
+                
+                  <span class="pill">170.0</span>
+                
+                  <span class="pill">187.96</span>
+                
+                  <span class="pill">175.0</span>
+                
+                  <span class="pill">175.26</span>
+                
+                  <span class="pill">172.72</span>
+                
+                  <span class="pill">152.4</span>
+                
+                  <span class="pill">None</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:20.135632+00:00</span></td>
+                    <td>The column has not been processed at all, so its type/structure is unknown. Per the workflow, the first step is to infer the schema (detect whether values are numeric, date, categorical, mixed types, units embedded in strings, etc.) before any parsing, cleaning, or validation can proceed. Routing to schemaInference ensures we correctly identify the column format and required downstream actions.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:23.459048+00:00</span></td>
+                    <td>Column contains human height measurements: mixed imperial formats ("5ft 10in", "6'2\"", "5′11″", "~ 6 ft", "about 5 ft 8") and metric forms ("170 cm", "1.75m"). The presence of unit tokens, feet/inch punctuation, and approximate markers indicates free-text height entries needing unit normalization; small row_count matches the sample so sampling risk is low.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:29.116111+00:00</span></td>
+                    <td>Schema inference has already been executed (Supervisor→SchemaInference). With the schema now identified, the next unmet step is parsing raw string values into structured units/types (e.g., extracting numeric values and units like "81 kg" → 81 + kg, normalizing free-text dates to ISO, splitting compound tokens, or mapping boolean synonyms). Per the routing rules, when the schema is known but raw strings require extraction/standardization, the workflow should invoke the parser_agent.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:33.397686+00:00</span></td>
+                    <td>Parsing approach: normalized all entries to height in centimeters (float, two decimals). Rules applied: recognize feet+inches in varied formats (e.g., 5ft 10in, 6'2", 5’9”, 5′11″) by extracting foot and inch integers; treat missing inches as 0 (e.g., "5 ft" -> 5'0"); ignore approximate tokens (~, about) and parse the numeric content. Convert: 1 foot = 12 inches, 1 inch = 2.54 cm, 1 meter = 100 cm. Metric tokens (cm, m) parsed directly (1.75m -> 175.00 cm; 170 cm -> 170.00). Preserved nulls. Rounding: final values rounded to two decimal places. Assumptions and ambiguities: entries with only feet assumed to have 0 inches; approximate markers interpreted as exact for normalization (may slightly misrepresent intended fuzziness); no unit-less ambiguous numeric-only values appeared in the sample. Confidence reduced slightly from schema-level due to these assumptions and potential edge cases in free-text variants (but parsing of provided samples is straightforward).</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:50.573515+00:00</span></td>
+                    <td>The visit log shows schema inference and parsing have already been run (SchemaInferenceNode -> ParserNode). The next typical step is refinement: parsed values now likely need cleaning and normalization (dtype coercion, handling/filling nulls, unifying category casing/labels, harmonizing units, clipping or flagging out-of-range values). We should not skip directly to validation because refinement tasks are usually required after parsing to ensure consistent, analyzable values before final checks.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T02:59:54.184772+00:00</span></td>
+                    <td>Normalized all heights to centimeters. Converted imperial entries (feet/inches and approximations) to cm using 1 in = 2.54 cm; normalized metric entries (m, cm) to cm. Replaced missing/NaN with null. Assumed approximate markers ("about", "~") indicate approximate values but converted to exact cm; curly quotes were parsed as feet/inches. No out-of-range values detected.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:04.322818+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 weight</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.95</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=1</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:00.488417+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:00.488417+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T03:00:02.478046+00:00"
+                        title="SchemaInferenceNode@2026-01-06T03:00:02.478046+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:06.792728+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:06.792728+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T03:00:12.521809+00:00"
+                        title="ParserNode@2026-01-06T03:00:12.521809+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:24.603660+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:24.603660+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T03:00:28.326002+00:00"
+                        title="RefinementNode@2026-01-06T03:00:28.326002+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T03:00:40.162735+00:00"
+                        title="ValidatorNode@2026-01-06T03:00:40.162735+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">weight_kg</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">81.65</span>
+                
+                  <span class="pill">75.0</span>
+                
+                  <span class="pill">None</span>
+                
+                  <span class="pill">74.84</span>
+                
+                  <span class="pill">72.0</span>
+                
+                  <span class="pill">68.04</span>
+                
+                  <span class="pill">68.0</span>
+                
+                  <span class="pill">81.0</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:00.488417+00:00</span></td>
+                    <td>The column has not been processed at all, so its type/structure is unknown. Per the workflow policy, schemaInference should run first to determine whether the data are numeric, dates, categorical, mixed types, or require special handling. This informs whether parsing, refinement, or validation are needed next.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:02.478046+00:00</span></td>
+                    <td>Column name 'weight' and samples contain numeric body-weight values with unit indicators (kg, kilograms, lb, lbs) and formatting variants (spaces, case, no space like '180lb'). One value 'unknown' indicates a missing sentinel. Strong signal but units are mixed and formatting inconsistent, so parsing/normalization will be needed.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:06.792728+00:00</span></td>
+                    <td>SchemaInference has already been run (node visited). With schema now determined, the next unmet step is to extract and standardize raw string values (dates, numbers with units, compound tokens, boolean/categorical synonyms). Per the decision policy, when schema is known but raw strings must be parsed into structured values, we route to parser_agent to perform parsing/standardization before any refinement or validation.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:12.521809+00:00</span></td>
+                    <td>Parsed a single output column 'weight_kg' (kilograms) from the raw 'weight' values. Rules applied: trim whitespace, case-insensitive unit recognition for 'kg', 'kilogram(s)', 'lb', 'lbs' (and variants with/without space). Converted pounds to kilograms using 1 lb = 0.45359237 kg. Kept values already in kg as-is. Rounded converted results to two decimal places for consistency. Treated the token 'unknown' as a missing value (null). Assumptions/limitations: all numeric tokens represent body weight; no other units (e.g., stones) were present. If additional unit variants appear in other rows, parsing rules may need extension. Confidence is high because units and numbers were explicit and unambiguous for all rows.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:24.603660+00:00</span></td>
+                    <td>The trace shows schema inference and the parser have already run (SchemaInferenceNode -> ParserNode). That indicates raw strings were extracted/standardized into structured values. The next logical step is refinement: coerce and enforce types, handle/flag nulls and NaNs, normalize categorical values/casing and units, clip or rescale numeric ranges, and otherwise clean inconsistencies before final validation. Validation should be postponed until refinement completes.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:28.326002+00:00</span></td>
+                    <td>Normalized all weights to kilograms. Converted values given in pounds to kg using 1 lb = 0.45359237 and rounded to two decimals (e.g., 180 lb -> 81.65 kg). Parsed explicit kg values as numbers. Replaced 'unknown' with null to preserve alignment. No other values invented.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:40.162735+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 visit_date</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.93</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=1</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:12.073908+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:12.073908+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T03:00:14.357545+00:00"
+                        title="SchemaInferenceNode@2026-01-06T03:00:14.357545+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:20.589194+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:20.589194+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T03:00:25.178564+00:00"
+                        title="ParserNode@2026-01-06T03:00:25.178564+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:56.147287+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:56.147287+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T03:01:01.159157+00:00"
+                        title="RefinementNode@2026-01-06T03:01:01.159157+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T03:01:13.415501+00:00"
+                        title="ValidatorNode@2026-01-06T03:01:13.415501+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">visit_date_iso</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">2024-10-03</span>
+                
+                  <span class="pill">2024-10-03</span>
+                
+                  <span class="pill">2024-10-04</span>
+                
+                  <span class="pill">2024-10-05</span>
+                
+                  <span class="pill">2024-10-05</span>
+                
+                  <span class="pill">2024-10-06</span>
+                
+                  <span class="pill">2024-10-07</span>
+                
+                  <span class="pill">2024-10-08</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:12.073908+00:00</span></td>
+                    <td>The column has not been processed at all, so its data type and structure are unknown. Per the workflow, schema inference must run first to determine whether the column is numeric, date, categorical, free-text, or mixed and to identify formats (e.g., date patterns, unit-bearing strings). This is required before any parsing, refinement, or validation steps can be correctly applied.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:14.357545+00:00</span></td>
+                    <td>Column name 'visit_date' plus every sample matching calendar date patterns (ISO-like YYYY/MM/DD and YYYYMMDD, DD-MM-YYYY, MM/DD/YY, '05 Oct 2024', 'Oct 7 2024', and dotted/period-separated variants) indicates this is a date field. Presence of multiple formats (including two-digit year and ambiguous 10/05/24) suggests formatting variability that should be normalized; sample size is small but fully consistent with dates.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:20.589194+00:00</span></td>
+                    <td>SchemaInference has already run for this column, so the schema/type is now known or clearer. The next step in the normal workflow is to extract and standardize raw string contents (units, embedded numbers, dates, compound tokens) into structured values for downstream cleaning and checks. Therefore route to parser_agent to perform that parsing/extraction before refinement and validation.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:25.178564+00:00</span></td>
+                    <td>Normalized all input values to ISO 8601 dates (YYYY-MM-DD) as a single parsed column visit_date_iso. Parsing rules and assumptions: (1) Recognized formats: YYYY/MM/DD, DD-MM-YYYY, YYYY-MM-DD, MM/DD/YY, D Mmm YYYY, YYYY.MM.DD, 'YYYYMMDD', and 'Mmm D YYYY'. (2) Two-digit year ("24") expanded to 2024 (assumed 2000-2099). (3) Ambiguous numeric order (e.g., "10/05/24") resolved using dataset context: surrounding rows represent consecutive October 3–10, 2024 and there is an explicit "05 Oct 2024" entry, so "10/05/24" was interpreted as MM/DD/YY -> 2024-10-05 rather than DD/MM/YY. (4) Entries like "10-10-2024" are unambiguous (same result either DD-MM-YYYY or MM-DD-YYYY). (5) Preserved original row order. Confidence lowered slightly from perfect because of the original two-digit and slash-separated ambiguous formats; if you prefer conservative behavior for ambiguous formats, I can instead mark ambiguous entries as null or provide an additional inferred-format column.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:56.147287+00:00</span></td>
+                    <td>Schema inference and parsing have already been executed (pipeline visited SchemaInference then Parser). That indicates the column type is known and raw strings have been parsed into structured values. The next logical step is to clean and normalize those parsed values (coerce types, handle nulls/NaNs, standardize categories/casing/units, clip or flag outliers) before final validation. Therefore route to refinement_agent.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:01.159157+00:00</span></td>
+                    <td>Normalized all dates to ISO 8601 (YYYY-MM-DD). Resolved ambiguous '10/05/24' as 2024-10-05 (interpreted as MM/DD/YY) because surrounding entries use October and there is an explicit '05 Oct 2024' entry; otherwise used direct parsing of given formats. No values removed; preserved alignment.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:13.415501+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 temperature</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.93</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=2</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:48.768267+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:48.768267+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T03:00:50.961318+00:00"
+                        title="SchemaInferenceNode@2026-01-06T03:00:50.961318+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:00:57.991791+00:00"
+                        title="SupervisorNode@2026-01-06T03:00:57.991791+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T03:01:02.589131+00:00"
+                        title="ParserNode@2026-01-06T03:01:02.589131+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:01:25.532736+00:00"
+                        title="SupervisorNode@2026-01-06T03:01:25.532736+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T03:01:30.256767+00:00"
+                        title="RefinementNode@2026-01-06T03:01:30.256767+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T03:01:53.484144+00:00"
+                        title="ValidatorNode@2026-01-06T03:01:53.484144+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">temperature_c, orig_unit</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">37.0</span>
+                
+                  <span class="pill">37.0</span>
+                
+                  <span class="pill">None</span>
+                
+                  <span class="pill">37.8</span>
+                
+                  <span class="pill">36.9</span>
+                
+                  <span class="pill">37.2</span>
+                
+                  <span class="pill">None</span>
+                
+                  <span class="pill">38.0</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:48.768267+00:00</span></td>
+                    <td>The column has not been processed yet and its type/structure is unknown. Per the decision policy, schema inference is the first step to determine whether values are numeric, dates, categorical, mixed, or require specialized parsing; therefore run schemaInference next.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:50.961318+00:00</span></td>
+                    <td>Values are numeric with 'F' or 'C' unit markers (e.g., '98.6F', '37C', '100.1 F', '39.1c'), and the magnitudes match human body temperatures in both Fahrenheit and Celsius. Minor formatting/case/spacing variations and occasional nulls are present; sample appears to show the full column (row_count=10), so confidence is high but parsing/normalization of units will be needed.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:00:57.991791+00:00</span></td>
+                    <td>SchemaInference has already been run (visited). With schema identified but values still in raw/string forms (mixed date/number/unit formats or compound tokens are expected after inference), the next required step is to extract and standardize structured values from the raw strings. According to the workflow policy, parsing/standardization is the earliest unmet step after schema inference, so route to parser_agent.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:02.589131+00:00</span></td>
+                    <td>Parsing rules: trimmed whitespace and parsed unit case-insensitively ('C' or 'c' -> Celsius, 'F' or 'f' -> Fahrenheit). Nulls preserved. Converted all values to a standardized numeric Celsius column (temperature_c) using Celsius = (Fahrenheit - 32) * 5/9 when original unit was Fahrenheit; values originally in Celsius kept as-is. Results rounded to two decimal places for consistency. orig_unit contains the original unit normalized to lowercase ('c' or 'f') or null if input was null. Assumptions/limitations: all non-null values included an explicit unit marker (C or F); if unit were missing or ambiguous we would leave unit null and temperature_c null (not applicable here). Rounding may introduce small differences from exact arithmetic.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:25.532736+00:00</span></td>
+                    <td>The trace shows the column has already gone through schema inference and the parser node was just invoked, so raw strings have likely been converted into structured values. The next typical step is to clean and normalize those parsed values (coerce types, handle nulls, unify categories/units, clip/scale outliers) before final validation. There is no indication parsing and refinement are complete or that only validation rules remain, so route to refinement_agent.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:30.256767+00:00</span></td>
+                    <td>Standardized to a single numeric Celsius column. Where original unit indicated Fahrenheit, values were converted to Celsius (F → C = (F-32)*5/9) as in the parser output; values rounded to one decimal. Preserved nulls for missing entries. No out-of-range values detected; did not invent any data.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:53.484144+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 category</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.93</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=1</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:01:23.377579+00:00"
+                        title="SupervisorNode@2026-01-06T03:01:23.377579+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T03:01:26.102099+00:00"
+                        title="SchemaInferenceNode@2026-01-06T03:01:26.102099+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:01:30.411159+00:00"
+                        title="SupervisorNode@2026-01-06T03:01:30.411159+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T03:01:36.235148+00:00"
+                        title="ParserNode@2026-01-06T03:01:36.235148+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:01:45.089499+00:00"
+                        title="SupervisorNode@2026-01-06T03:01:45.089499+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T03:01:49.691739+00:00"
+                        title="RefinementNode@2026-01-06T03:01:49.691739+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T03:01:57.951921+00:00"
+                        title="ValidatorNode@2026-01-06T03:01:57.951921+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">category_normalized</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">A</span>
+                
+                  <span class="pill">B</span>
+                
+                  <span class="pill">A</span>
+                
+                  <span class="pill">C</span>
+                
+                  <span class="pill">A</span>
+                
+                  <span class="pill">B</span>
+                
+                  <span class="pill">C</span>
+                
+                  <span class="pill">B</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:23.377579+00:00</span></td>
+                    <td>The column has not been processed at all, so its data type/structure is unknown. Per the decision policy, schema inference is required first to determine whether values are numeric, dates, categorical, free text, or mixed and to detect formats/units before any parsing, cleaning, or validation can proceed.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:26.102099+00:00</span></td>
+                    <td>Values are a small set of repeated labels (A, B, C, b, c, Other) with 'Other' as a catch‑all and inconsistent casing (B vs b, C vs c), indicating nominal categorical data. Row count is small but the pattern and column name strongly point to a categorical variable; casing inconsistency suggests values may need normalization.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:30.411159+00:00</span></td>
+                    <td>SchemaInference has already run (Supervisor -> SchemaInference). The next earliest unmet step is parsing: with an inferred schema we typically need to extract and standardize values from raw strings (units, numbers embedded in text, free-text dates, compound tokens, boolean synonyms, etc.). Routing to parser_agent will convert those raw string forms into structured values so subsequent refinement/validation can proceed.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:36.235148+00:00</span></td>
+                    <td>Normalized categorical labels by lowercasing and standardizing casing inconsistencies (A/B/C/b/c -> a/b/c). Preserved 'Other' as the catch-all category and lowercased it to 'other'. Assumptions/heuristics: values are nominal categories where case differences are not meaningful, so we collapsed case variants into single lowercase labels; no missing values were present; row order preserved. Confidence is high because mapping is deterministic and unambiguous given the provided values; if case did carry semantic meaning in the source system, this normalization would be lossy.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:45.089499+00:00</span></td>
+                    <td>The column has already gone through schema inference and parsing (ParserNode was the last processing step). The typical next step after parsing is cleaning and normalization: coercing types, handling nulls/NaNs, unifying categories/casing/units, clipping or flagging outliers, and other consistency fixes required before final validation. There is no indication that final validation is ready, so route to refinement_agent.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:49.691739+00:00</span></td>
+                    <td>Normalized categorical labels to consistent casing: mapped a->A, b->B, c->C and lowercased 'other'->'Other'. No values were invented or removed; alignment preserved.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:01:57.951921+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+      
+      
+      
+      
+      
+      
+      
+
+      <section class="card">
+        <div class="cardhead">
+          <h2 class="colname">🌱 comments</h2>
+          <span class="badge good">
+            <span class="dot good"></span>
+            ✅ SUCCESS
+          </span>
+        </div>
+
+        <div class="meta">
+          <div><b>confidence</b>=0.90</div>
+          <div><b>shape</b>=10×1</div>
+          <div><b>mapped_cols</b>=1</div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧵 Agents</b></div>
+          <div class="small">
+            
+              <div class="agents-line">
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:02:03.950104+00:00"
+                        title="SupervisorNode@2026-01-06T03:02:03.950104+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SchemaInferenceNode"
+                        data-ts="2026-01-06T03:02:06.487554+00:00"
+                        title="SchemaInferenceNode@2026-01-06T03:02:06.487554+00:00">SchemaInferenceNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:02:14.994057+00:00"
+                        title="SupervisorNode@2026-01-06T03:02:14.994057+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ParserNode"
+                        data-ts="2026-01-06T03:02:23.215071+00:00"
+                        title="ParserNode@2026-01-06T03:02:23.215071+00:00">ParserNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="SupervisorNode"
+                        data-ts="2026-01-06T03:02:41.917769+00:00"
+                        title="SupervisorNode@2026-01-06T03:02:41.917769+00:00">SupervisorNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="RefinementNode"
+                        data-ts="2026-01-06T03:02:46.736952+00:00"
+                        title="RefinementNode@2026-01-06T03:02:46.736952+00:00">RefinementNode</span>
+                  <span class="arrow">→</span>
+                
+                  
+                  
+                  
+                  <span class="agent"
+                        data-node="ValidatorNode"
+                        data-ts="2026-01-06T03:03:01.986488+00:00"
+                        title="ValidatorNode@2026-01-06T03:03:01.986488+00:00">ValidatorNode</span>
+                  
+                
+              </div>
+              <div class="muted small" style="margin-top:6px;">Tip: toggle “show timestamps” ↗</div>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🧬 Output columns</b></div>
+          <div class="small">
+            
+              <span class="code" style="padding:8px 10px; border-radius:12px;">comments_clean</span>
+            
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="muted small"><b>🔎 Preview</b></div>
+          <div>
+            
+              <div class="preview">
+                
+                  <span class="pill">first visit</span>
+                
+                  <span class="pill">follow-up</span>
+                
+                  <span class="pill">None</span>
+                
+                  <span class="pill">none</span>
+                
+                  <span class="pill">patient said: "I feel fine"</span>
+                
+                  <span class="pill">None</span>
+                
+                  <span class="pill">None</span>
+                
+                  <span class="pill">lost height?</span>
+                
+              </div>
+            
+          </div>
+        </div>
+
+        
+
+        <details>
+          <summary>🕸️ Node summaries (7)</summary>
+          <div style="margin-top:10px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:22%;">Node</th>
+                  <th style="width:24%;">Time</th>
+                  <th>Notes</th>
+                </tr>
+              </thead>
+
+              
+              
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+                
+                
+                
+                
+              
+              
+
+              <tbody>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:02:03.950104+00:00</span></td>
+                    <td>Column has not been processed yet, so its type/structure is unknown. According to the workflow, the first step is to infer the schema (detect whether values are numeric, date, categorical, mixed types, units, or free text) before any parsing or refinement can proceed.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SchemaInferenceNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:02:06.487554+00:00</span></td>
+                    <td>Values are heterogeneous short natural-language snippets (e.g., 'patient said: "I feel fine"', 'lost height?', 'first visit') with punctuation, variable whitespace, and null/blank entries, consistent with unstructured comments rather than a coded/categorical field. No recognizable standardized codes or date/number formats appear; small sample size noted but patterns strongly indicate free-text notes.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:02:14.994057+00:00</span></td>
+                    <td>Schema inference has already run (node trace shows Supervisor -> SchemaInference). According to the workflow policy, once the schema is known the next earliest step is parsing: raw strings, embedded units, dates or compound tokens must be extracted and converted to structured values before any refinement or validation. Route to parser_agent so values like '81 kg', 'Nov 8, 2024', or other free-text tokens can be standardized into proper numeric/date/code types (Decision policy step 2).</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">ParserNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:02:23.215071+00:00</span></td>
+                    <td>Normalized free-text clinical comments by: 1) trimming leading/trailing whitespace; 2) collapsing internal whitespace to single spaces (no examples required this beyond trimming); 3) lowercasing all text for consistency; 4) converting blank-only strings (e.g., "   ") to null to reflect missing data; 5) preserving punctuation and tokens like 'none' or '???' (did NOT convert them to null or other semantic labels to avoid making assumptions about meaning). I did not attempt to split into multiple fields or extract structured entities (e.g., 'visit type' vs 'symptom') because the input is heterogeneous short notes and the schema already inferred free-text. Confidence is high because transformations are deterministic and non-destructive, but not maximal because some tokens (e.g., 'none', '???') could be interpreted differently in downstream tasks.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">SupervisorNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:02:41.917769+00:00</span></td>
+                    <td>The visit path shows schema inference and then the parser have already run (SchemaInferenceNode -> ParserNode). That means the column’s raw values have been identified and parsed into structured values. The next standard step is to clean and normalize those parsed values (coerce types, fill/flag missing values, unify categories/units, handle outliers and normalization). Therefore route to refinement_agent to perform those tasks before final validation.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">RefinementNode</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:02:46.736952+00:00</span></td>
+                    <td>Trimmed leading/trailing whitespace; collapsed blank entries and NaNs to null; converted clearly nonsensical '???' to null; preserved original punctuation and capitalization from the raw input; ensured alignment with original rows.</td>
+                  </tr>
+                
+                  <tr>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">validator</span></td>
+                    <td><span class="code" style="padding:6px 8px; border-radius:10px;">2026-01-06T03:03:01.986488+00:00</span></td>
+                    <td>pass</td>
+                  </tr>
+                
+                
+              </tbody>
+              
+            </table>
+          </div>
+        </details>
+
+      </section>
+    
+    </div>
+
+    <div class="footer">
+      🦋 MetaMorph • generated 2026-01-06T03:03:09.265190+00:00
+    </div>
+
+  </div>
+
+  <script>
+    // Toggle timestamp visibility in the Agents breadcrumb.
+    // Each .agent span has: data-node="SupervisorNode" data-ts="2026-01-05T..."
+    (function () {
+      const toggle = document.getElementById("toggle-ts");
+      if (!toggle) return;
+
+      function renderAgents(showTs) {
+        document.querySelectorAll(".agent").forEach((el) => {
+          const node = el.getAttribute("data-node") || "";
+          const ts = el.getAttribute("data-ts") || "";
+          if (showTs && ts) {
+            el.textContent = node + " @" + ts;
+          } else {
+            el.textContent = node;
+          }
+        });
+      }
+
+      // default: off
+      renderAgents(false);
+
+      toggle.addEventListener("change", () => {
+        renderAgents(toggle.checked);
+      });
+    })();
+  </script>
+</body>
+</html>

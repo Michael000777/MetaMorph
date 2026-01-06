@@ -102,12 +102,14 @@ async def validator_node(state: MetaMorphState) -> Command:
     print(f"Validation: {decision.upper()} — {reason}", flush=True)
 
     route = determine_route(decision, retry_count)
+
+    NodeTrackerName = f"validator@{timestamp}"
     
     #Tracker patch (merged by Node_Col_tracker
     curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
     V_PATCH = {
         "processed_column": [curr_col],
-         "node_path": {curr_col: {"validator": decision}},
+         "node_path": {curr_col: {NodeTrackerName: decision}},
          "events_path" : [f"ValidatorNode@{timestamp}"]
         # "events_path": [f"Validator → {('Refinement' if decision=='retry' else 'End' if decision=='pass' else 'Supervisor')}"]
      }

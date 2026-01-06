@@ -1,0 +1,11 @@
+record_id_normalized,height_cm,weight_kg,visit_date_iso,temperature__1,category_normalized,comments_clean
+001,177.8,81.65,2024-10-03,37.0,A,first visit
+P-02,170.0,75.0,2024-10-03,37.0,B,follow-up
+003,187.96,,2024-10-04,,A,
+004,175.0,74.84,2024-10-05,37.8,C,none
+005,175.26,72.0,2024-10-05,36.9,A,"patient said: ""I feel fine"""
+PAT-006,172.72,68.04,2024-10-06,37.2,B,
+007,152.4,68.0,2024-10-07,,C,
+008,,81.0,2024-10-08,38.0,B,lost height?
+009,180.34,81.65,2024-10-09,38.9,A,dizziness reported
+010,182.88,84.0,2024-10-10,39.1,Other,

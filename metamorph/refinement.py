@@ -100,9 +100,12 @@ async def refinement_agent(state: MetaMorphState) -> Command:
 
     # Tracker patch (merged by Annotated[tracker, merge_tracker] on Node_Col_tracker)
     curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
+
+    NodeTrackerName = f"RefinementNode@{timestamp}"
+
     R_PATCH = {
         "processed_column": [curr_col],
-        "node_path": {curr_col: {"refinement": result.notes}},
+        "node_path": {curr_col: {NodeTrackerName: result.notes}},
         "events_path" : [f"RefinementNode@{timestamp}"]
         #"events_path": ["Refinement → Validator"]
     }

@@ -99,11 +99,13 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
     normParsed = normalize_to_colmatrix(response.parsed_col_data)
 
+    NodeTrackerName = f"ParserNode@{timestamp}"
+
     P_PATCH = { 
         "Node_Col_Tracker" : { 
             "node_path" : {
                 curr_col: {
-                    "ParserNode": response.notes
+                    NodeTrackerName: response.notes
                     }
                 },
             "events_path" : [f"ParserNode@{timestamp}"]
