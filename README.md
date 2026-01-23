@@ -58,7 +58,7 @@ MetaMorph can generate an HTML report to review results quickly:
 
 ---
 
-## ✨ Features
+## ✨ Features (v1.1)
 
 🐛 **Plug-and-play metadata transformation** → structured outputs ready for ML  
 🐛 **LLM-powered extraction + normalization** (units, dates, entities, categories)  
