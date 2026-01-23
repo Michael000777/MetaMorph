@@ -2,7 +2,7 @@
 
 **Transform your metadata. Transform your models.**
 
-MetaMorph is an open-source **LLM-powered agent system** for **metadata extraction, normalization, and structuring**. It converts messy, unstructured, or heterogeneous dataset columns into **machine-readable features** using an **agentic workflow** (multi-step LLM pipeline) with **provenance tracking** and optional **HTML reporting**—built for reliable downstream analytics, ML, and RAG-ready data prep.
+MetaMorph is an open-source **LLM-powered agent system** for **metadata extraction, normalization, and structuring**. It converts messy, unstructured, or heterogeneous dataset columns into **machine-readable features** using an **agentic workflow** (multi-step LLM pipeline) with **provenance tracking** and optional **HTML reporting**, designed for reliable downstream analytics, ML, and RAG-ready data prep.
 
 > **Keywords:** LLM agents, agentic workflows, multi-agent systems, LLM data extraction, metadata normalization, schema inference, structured outputs, LangGraph, LangChain, RAG data preparation, dataset cleaning, feature engineering, unstructured-to-structured, data pipelines, AI data wrangling.
 
@@ -102,7 +102,7 @@ pixi run python metamorph/mainConcurrent.py --input examples/data1.csv -d testRo
 - --input : path to your dataset (CSV)
 - -d / --dataset-id : identifier used in outputs and reporting
 - -o / --outdir : output directory (created if missing)
-- -l / --llm : model selection (e.g., gpt-5-mini)
+- -l / --llm : model selection (e.g., gpt-5-mini). Currently GPT moels only
 
 ## 🧾 Outputs
 MetaMorph can generate:
@@ -111,3 +111,44 @@ MetaMorph can generate:
 - per-column summaries (confidence, errors, notes)
 - provenance tracking (events_path, node_path)
 - optional HTML report for debugging and review
+
+
+---
+
+## 🔍 Example: one column, end-to-end
+
+### Input
+
+```text
+height
+"5 ft 10 in"
+"170 cm"
+"6'2\""
+"1.75 m"
+"unknown"
+```
+
+### Output
+
+```text
+height_cm
+177.8
+170.0
+188.0
+175.0
+null
+```
+---
+
+## 🧭 Roadmap: v1.2 (planned)
+
+Version 1.2 focuses on extensibility and alignment with production-ready pipelines.
+
+### Backend model abstraction
+- Decouple agent logic from LLM providers.
+- Support local models and multiple backends per stage.
+- Enable cost-aware routing while preserving structured-output contracts.
+
+### Structured JSON outputs
+- Convert complex free-text metadata into explicit JSON or dictionary representations.
+- Support richer validation, downstream modeling, and RAG-style workflows.
