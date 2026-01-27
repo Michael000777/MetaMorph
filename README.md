@@ -104,6 +104,62 @@ pixi run python metamorph/mainConcurrent.py --input examples/data1.csv -d testRo
 - -o / --outdir : output directory (created if missing)
 - -l / --llm : model selection (e.g., gpt-5-mini). Currently GPT moels only
 
+## MCP (Model Context Protocol) Support
+
+MetaMorph can be exposed as a **local MCP server**, allowing any MCP-compatible client (IDE agents, desktop apps, or other LLM orchestrators) to invoke MetaMorph as a structured tool.
+
+This enables MetaMorph to be used **programmatically by external agents**, without deploying a web service.
+
+### Why MCP?
+- Standardized tool interface for LLMs (no custom APIs)
+- Local execution over **stdio** (no ports, no HTTP)
+- Explicit, minimal surface area
+- Same transformation pipeline as the CLI
+
+---
+
+## Running MetaMorph as an MCP Server
+
+Start the MCP server locally:
+
+```bash
+pixi run python -m metamorph.mcp_server
+```
+
+The server runs over **stdio** and waits for tool invocations from an MCP client.
+
+---
+## Exposed MCP Tools
+
+The MCP server intentionally exposes a **minimal API**.
+
+### `metamorph_run`
+
+Runs the full MetaMorph transformation pipeline on a CSV dataset.
+
+**Inputs**
+- `input_path` — path to CSV file  
+- `outdir` — output directory  
+- `dataset_id` (optional)  
+- `llm` (optional)  
+- `max_concurrency` (optional)  
+
+**Outputs**
+- path to cleaned CSV  
+- Markdown + HTML transformation reports  
+- short report preview for client inspection  
+
+### `metamorph_info`
+
+Returns basic capability metadata about the MetaMorph server.
+
+**Outputs**
+- tool name and purpose  
+- supported input types  
+- generated output artifacts
+
+---
+
 ## Outputs
 MetaMorph can generate:
 - structured values (normalized units, parsed categories, extracted fields)
