@@ -8,7 +8,7 @@ MetaMorph is an open-source **LLM-powered agent system** for **metadata extracti
 
 ---
 
-## 🚀 Why MetaMorph?
+## Why MetaMorph?
 
 High-quality metadata is the backbone of meaningful machine learning. But in the real world, metadata often lives in:
 - free-text columns (`notes`, `comments`, `sample description`)
@@ -28,9 +28,9 @@ This makes models brittle, reduces reproducibility, and slows down iteration.
 
 ---
 
-## 🧠 What makes MetaMorph different?
+## What makes MetaMorph different?
 
-### 🧬 Agentic workflow (LLM Agent System)
+### Agentic workflow (LLM Agent System)
 MetaMorph is not “one prompt.” It’s an **LLM agent pipeline** (supervisor + specialized nodes) designed for robust transformation:
 - parsing
 - schema/type inference
@@ -40,7 +40,7 @@ MetaMorph is not “one prompt.” It’s an **LLM agent pipeline** (supervisor 
 
 This structure supports **repeatable, testable LLM behavior** and safer scaling across columns and datasets.
 
-### 🧵 Column-level provenance (audit trail)
+### Column-level provenance (audit trail)
 Each processed column can maintain a tracker containing:
 - **events_path** — which agents/nodes touched the column (optionally timestamped)
 - **node_path** — summaries/reasons from each node, per column
@@ -48,7 +48,7 @@ Each processed column can maintain a tracker containing:
 
 So you can answer: *“What changed, when, and why?”*
 
-### 🦋 Human-readable HTML reports
+### Human-readable HTML reports 🐛→🦋
 MetaMorph can generate an HTML report to review results quickly:
 - success/failure per column
 - confidence + output shape
@@ -58,18 +58,18 @@ MetaMorph can generate an HTML report to review results quickly:
 
 ---
 
-## ✨ Features (v1.1)
+## Features (v1.1)
 
-🐛 **Plug-and-play metadata transformation** → structured outputs ready for ML  
-🐛 **LLM-powered extraction + normalization** (units, dates, entities, categories)  
-🐛 **Agent system architecture** for reliability and modularity  
-🐛 **Structured outputs + validation** friendly design patterns  
-🐛 **Domain-agnostic core** with hooks for domain constraints/ontologies  
-🐛 **Provenance + reporting** for transparency and debugging  
+- **Plug-and-play metadata transformation** → structured outputs ready for ML  
+- **LLM-powered extraction + normalization** (units, dates, entities, categories)  
+- **Agent system architecture** for reliability and modularity  
+- **Structured outputs + validation** friendly design patterns  
+- **Domain-agnostic core** with hooks for domain constraints/ontologies  
+- **Provenance + reporting** for transparency and debugging  
 
 ---
 
-## 📦 Example use cases
+## Example use cases
 
 - **Environmental / exposure science:** parse lab notes + units into consistent exposure variables for prediction models  
 - **Clinical / biomedical:** normalize clinical metadata fields for patient stratification and risk models  
@@ -79,7 +79,7 @@ MetaMorph can generate an HTML report to review results quickly:
 
 ---
 
-## 🛠️ Installation (Pixi)
+## Installation (Pixi)
 
 This project uses **Pixi** for environment management.
 
@@ -104,7 +104,7 @@ pixi run python metamorph/mainConcurrent.py --input examples/data1.csv -d testRo
 - -o / --outdir : output directory (created if missing)
 - -l / --llm : model selection (e.g., gpt-5-mini). Currently GPT moels only
 
-## 🧾 Outputs
+## Outputs
 MetaMorph can generate:
 - structured values (normalized units, parsed categories, extracted fields)
 - mapped feature columns (one-to-many expansion when needed)
@@ -115,7 +115,7 @@ MetaMorph can generate:
 
 ---
 
-## 🔍 Example: one column, end-to-end
+## Example: one column, end-to-end
 
 ### Input
 
@@ -140,7 +140,7 @@ null
 ```
 ---
 
-## 🧭 Roadmap: v1.2 (planned)
+## Roadmap: v1.2 (planned)
 
 Version 1.2 focuses on extensibility and alignment with production-ready pipelines.
 
