@@ -9,6 +9,7 @@ from langchain_core.messages import HumanMessage
 from langgraph.graph import START, END, MessagesState
 from langgraph.types import Command
 from utils.MetaMorphState import ValidatorData, MetaMorphState, tracker
+from .validation_contracts import validate_transformation_contract
 
 
 MAX_RETRIES = 5
@@ -65,10 +66,54 @@ async def validator_node(state: MetaMorphState) -> Command:
 
     if refined and getattr(refined, "cleaned_values", None) is not None:
         transformed_values = refined.cleaned_values
+        model_confidence = getattr(refined, "confidence", None)
     elif parsed and getattr(parsed, "parsed_output", None) is not None:
         transformed_values = parsed.parsed_output
+        model_confidence = getattr(parsed, "model_confidence", None)
     else:
         transformed_values = []
+        model_confidence = None
+
+    curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
+    output_names = None
+    if parsed and getattr(parsed, "column_name", None):
+        output_names = parsed.column_name.get(curr_col)
+
+    contract_result = validate_transformation_contract(
+        raw_values=(raw.values if raw else []),
+        transformed_values=transformed_values,
+        output_names=output_names,
+        confidence=model_confidence,
+    )
+
+    if not contract_result.passed:
+        decision = "retry" if contract_result.recoverable and retry_count < MAX_RETRIES else "fail"
+        reason = f"Deterministic validation failed: {contract_result.message}"
+        failed_rows = contract_result.failed_rows
+        route = determine_route(decision, retry_count)
+        new_retry_count = retry_count + 1 if decision == "retry" else retry_count
+
+        print(f"Validation: {decision.upper()} — {reason}", flush=True)
+
+        NodeTrackerName = f"validator@{timestamp}"
+        V_PATCH = {
+            "processed_column": [curr_col],
+            "node_path": {curr_col: {NodeTrackerName: reason}},
+            "events_path": [f"ValidatorNode@{timestamp}"],
+        }
+
+        return Command(
+            update={
+                "validator_data": ValidatorData(
+                    passed=False,
+                    failed_rows=failed_rows,
+                    message=reason,
+                    retry_count=new_retry_count,
+                ),
+                "Node_Col_Tracker": V_PATCH,
+            },
+            goto=route,
+        )
 
     messages = [
         {"role": "system", "content": validator_prompt},
@@ -106,10 +151,9 @@ async def validator_node(state: MetaMorphState) -> Command:
     NodeTrackerName = f"validator@{timestamp}"
     
     #Tracker patch (merged by Node_Col_tracker
-    curr_col = state.input_column_data.column_name if getattr(state, "input_column_data", None) else "unknown_column"
     V_PATCH = {
         "processed_column": [curr_col],
-         "node_path": {curr_col: {NodeTrackerName: decision}},
+         "node_path": {curr_col: {NodeTrackerName: reason}},
          "events_path" : [f"ValidatorNode@{timestamp}"]
         # "events_path": [f"Validator → {('Refinement' if decision=='retry' else 'End' if decision=='pass' else 'Supervisor')}"]
      }

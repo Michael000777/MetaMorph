@@ -8,7 +8,9 @@ from utils.MetaMorphState import (
     ColSample,
     InputColumnData,
     MetaMorphState,
+    parsedData,
     RefinementResults,
+    ValidatorData,
 )
 from utils.prompts import load_prompts
 
@@ -168,6 +170,53 @@ class StructuredOutputNodeTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(command.update["validator_data"].passed)
         self.assertEqual(command.update["validator_data"].message, "Output is row-aligned and plausible.")
         self.assertEqual(command.update["validator_data"].failed_rows, [])
+
+    async def test_validator_node_retries_contract_failure_without_llm(self):
+        state = MetaMorphState(
+            input_column_data=InputColumnData(column_name="height", values=["5 ft 10 in", "170 cm"]),
+            ColumnSample=ColSample(column_name="height", row_count=2),
+            parsed_data_output=parsedData(column_name={"height": ["height_cm"]}),
+            refinement_results=RefinementResults(
+                cleaned_values=[[177.8], [170.0]],
+                confidence=0.98,
+                refinement_attempts=1,
+            ),
+        )
+
+        with patch.object(validator, "get_llm", side_effect=AssertionError("LLM should not be called")):
+            command = await validator.validator_node(state)
+
+        self.assertEqual(command.goto, "refinement_agent")
+        self.assertFalse(command.update["validator_data"].passed)
+        self.assertEqual(command.update["validator_data"].retry_count, 1)
+        self.assertEqual(command.update["validator_data"].failed_rows, [0, 1])
+        self.assertIn("row_major_orientation", command.update["validator_data"].message)
+
+    async def test_validator_node_routes_exhausted_contract_failure_to_supervisor(self):
+        state = MetaMorphState(
+            input_column_data=InputColumnData(column_name="height", values=["5 ft 10 in", "170 cm"]),
+            ColumnSample=ColSample(column_name="height", row_count=2),
+            parsed_data_output=parsedData(column_name={"height": ["height_cm"]}),
+            refinement_results=RefinementResults(
+                cleaned_values=[[177.8]],
+                confidence=0.98,
+                refinement_attempts=6,
+            ),
+            validator_data=ValidatorData(
+                passed=False,
+                failed_rows=[1],
+                retry_count=validator.MAX_RETRIES,
+                message="Previous retry",
+            ),
+        )
+
+        with patch.object(validator, "get_llm", side_effect=AssertionError("LLM should not be called")):
+            command = await validator.validator_node(state)
+
+        self.assertEqual(command.goto, "supervisor")
+        self.assertFalse(command.update["validator_data"].passed)
+        self.assertEqual(command.update["validator_data"].retry_count, validator.MAX_RETRIES)
+        self.assertIn("row_length_mismatch", command.update["validator_data"].message)
 
 
 if __name__ == "__main__":
