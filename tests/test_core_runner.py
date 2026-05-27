@@ -10,6 +10,7 @@ from unittest.mock import patch
 import pandas as pd
 
 from metamorph import core
+from metamorph import mainConcurrent
 from metamorph import mcp_server
 from utils.MetaMorphState import tracker
 
@@ -124,6 +125,32 @@ class CliTests(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertIn("--outdir", completed.stdout)
         self.assertIn("Defaults to Reports/", completed.stdout)
+
+    def test_concurrent_cli_delegates_to_core_runner(self):
+        with patch.object(mainConcurrent, "run_MetaMorph_on_csv") as run_csv:
+            exit_code = mainConcurrent.main(
+                [
+                    "--input",
+                    "examples/data1.csv",
+                    "--dataset-id",
+                    "dataset-a",
+                    "--outdir",
+                    "outputs",
+                    "--llm",
+                    "test-model",
+                    "--max-concurrency",
+                    "4",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        run_csv.assert_called_once_with(
+            input_path="examples/data1.csv",
+            outdir="outputs",
+            dataset_id="dataset-a",
+            llm="test-model",
+            max_concurrency=4,
+        )
 
 
 class McpServerTests(unittest.TestCase):
