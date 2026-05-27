@@ -38,6 +38,7 @@ from input import build_sample_data
 
 
 JSONScalar = Union[str, int, float, bool, None]
+DEFAULT_OUTDIR = "Reports"
 
 class FinalDataSummary(BaseModel):
     trackerInfo: tracker
@@ -218,7 +219,7 @@ def BuildFinalDf(df: pd.DataFrame, cleaned_data: DatasetSummary):
 
 def run_MetaMorph_on_csv(
     input_path: str,
-    outdir: str | Path,
+    outdir: str | Path = DEFAULT_OUTDIR,
     dataset_id: str | None = None,
     llm: str = "gpt-5-nano",
     max_concurrency: int = 2,    
@@ -232,7 +233,7 @@ def run_MetaMorph_on_csv(
     outdir.mkdir(parents=True, exist_ok=True)
 
 
-    set_llm_model(args.llm)
+    set_llm_model(llm)
     model_name = get_llm().model_name
     print("Using model:", model_name)
 
@@ -250,7 +251,7 @@ def run_MetaMorph_on_csv(
     df = pd.read_csv(input_path)
     columns = {col: df[col].tolist() for col in df.columns}
 
-    dataset_id = dataset_id or csv_path.stem
+    dataset_id = dataset_id or input_path.stem
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
     # Running METAMORPH on all columns 
@@ -310,8 +311,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--outdir", "-o",
-        #default="./Reports/",
-        help="Output directory for the generated report files."
+        default=DEFAULT_OUTDIR,
+        help=f"Output directory for the generated report files. Defaults to {DEFAULT_OUTDIR}/."
     )
     parser.add_argument(
         "--llm", "-l",
@@ -327,12 +328,10 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    csv_path = args.input
-
     res = run_MetaMorph_on_csv(
         input_path=args.input,
-        outdir= args.outdir,
-        dataset_id= args.dataset_id,
-        llm= args.llm,
-        max_concurrency= args.max_concurrency,
+        outdir=args.outdir,
+        dataset_id=args.dataset_id,
+        llm=args.llm,
+        max_concurrency=args.max_concurrency,
     )
