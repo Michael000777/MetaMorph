@@ -23,11 +23,18 @@ def summarizeTransformations(Res):
 
     StartTime, EndTime = Res['started_at'], Res['finished_at']
 
-    dur = (parse_iso(EndTime) - parse_iso(StartTime)).total_seconds()
+    dur = Res.get("duration_seconds")
+    if dur is None:
+        dur = (parse_iso(EndTime) - parse_iso(StartTime)).total_seconds()
 
     lines.append(f"**Started:** {StartTime}  \n**Finished:** {EndTime}  \n**Duration:** {dur:.2f}s  \n")
 
     lines.append(f"✅ Success: {Res['n_success']} | ❌ Failed: {Res['n_failed']}\n")
+    lines.append(f"**Total retries:** {Res.get('total_retry_count', 0)}")
+    status_counts = Res.get("validation_status_counts", {})
+    if status_counts:
+        status_summary = ", ".join(f"{k}: {v}" for k, v in sorted(status_counts.items()))
+        lines.append(f"**Validation statuses:** {status_summary}\n")
 
 
     for col, data in Res['colData'].items():

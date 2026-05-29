@@ -1,4 +1,5 @@
 import os
+import json
 import subprocess
 import sys
 import tempfile
@@ -24,16 +25,20 @@ class CoreRunnerTests(unittest.TestCase):
 
             captured = {}
 
-            async def fake_run_all(graph, dataset_id, columns, max_concurrency):
+            async def fake_run_all(graph, dataset_id, columns, max_concurrency, graph_recursion_limit):
                 captured["dataset_id"] = dataset_id
                 captured["columns"] = columns
                 captured["max_concurrency"] = max_concurrency
+                captured["graph_recursion_limit"] = graph_recursion_limit
                 return core.DatasetSummary(
                     dataset_id=dataset_id,
                     started_at="2026-05-27T00:00:00+00:00",
                     finished_at="2026-05-27T00:00:01+00:00",
+                    duration_seconds=1.0,
                     n_success=1,
                     n_failed=0,
+                    total_retry_count=0,
+                    validation_status_counts={"pass": 1},
                     colData={
                         "height": core.FinalDataSummary(
                             trackerInfo=tracker(),
@@ -66,9 +71,11 @@ class CoreRunnerTests(unittest.TestCase):
             self.assertEqual(captured["dataset_id"], "sample_metadata")
             self.assertEqual(captured["columns"], {"height": ["5 ft 10 in", "170 cm"]})
             self.assertEqual(captured["max_concurrency"], 7)
+            self.assertEqual(captured["graph_recursion_limit"], core.DEFAULT_GRAPH_RECURSION_LIMIT)
             self.assertTrue(Path(result.cleaned_csv_path).exists())
             self.assertTrue(Path(result.report_md_path).exists())
             self.assertTrue(Path(result.report_html_path).exists())
+            self.assertTrue(Path(result.run_manifest_path).exists())
             self.assertEqual(Path(result.cleaned_csv_path).parent.name, core.DEFAULT_OUTDIR)
 
     def test_runner_honors_explicit_dataset_id_and_outdir(self):
@@ -78,11 +85,12 @@ class CoreRunnerTests(unittest.TestCase):
             outdir = tmp_path / "custom_outputs"
             pd.DataFrame({"age": ["10", "11"]}).to_csv(input_path, index=False)
 
-            async def fake_run_all(graph, dataset_id, columns, max_concurrency):
+            async def fake_run_all(graph, dataset_id, columns, max_concurrency, graph_recursion_limit):
                 return core.DatasetSummary(
                     dataset_id=dataset_id,
                     started_at="2026-05-27T00:00:00+00:00",
                     finished_at="2026-05-27T00:00:01+00:00",
+                    duration_seconds=1.0,
                     n_success=1,
                     n_failed=0,
                     colData={
@@ -109,6 +117,67 @@ class CoreRunnerTests(unittest.TestCase):
             self.assertEqual(result.dataset_id, "explicit-dataset")
             self.assertEqual(Path(result.cleaned_csv_path).parent, outdir.resolve())
             self.assertTrue(outdir.exists())
+
+    def test_runner_writes_run_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            input_path = tmp_path / "input.csv"
+            outdir = tmp_path / "outputs"
+            pd.DataFrame({"age": ["10", "11"]}).to_csv(input_path, index=False)
+
+            async def fake_run_all(graph, dataset_id, columns, max_concurrency, graph_recursion_limit):
+                return core.DatasetSummary(
+                    dataset_id=dataset_id,
+                    started_at="2026-05-27T00:00:00+00:00",
+                    finished_at="2026-05-27T00:00:02+00:00",
+                    duration_seconds=2.0,
+                    n_success=1,
+                    n_failed=0,
+                    total_retry_count=1,
+                    validation_status_counts={"pass": 1},
+                    colData={
+                        "age": core.FinalDataSummary(
+                            trackerInfo=tracker(events_path=["ValidatorNode@2026-05-27T00:00:01+00:00"]),
+                            confidence=0.88,
+                            ColNames={"age": ["age_years"]},
+                            TransformedValues=[[10, 11]],
+                            retryCount=1,
+                            validationStatus="pass",
+                            validationMessage="Output is row-aligned.",
+                            finalRoute="__end__",
+                        )
+                    },
+                )
+
+            with (
+                patch.object(core, "set_llm_model"),
+                patch.object(core, "get_llm", return_value=SimpleNamespace(model_name="fake-model")),
+                patch.object(core, "run_all", side_effect=fake_run_all),
+            ):
+                result = core.run_MetaMorph_on_csv(
+                    input_path=input_path,
+                    outdir=outdir,
+                    dataset_id="dataset-a",
+                    llm="test-model",
+                    max_concurrency=3,
+                )
+
+            manifest_path = Path(result.run_manifest_path)
+            self.assertEqual(manifest_path.name, core.RUN_MANIFEST_FILENAME)
+            self.assertTrue(manifest_path.exists())
+
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertEqual(manifest["dataset_id"], "dataset-a")
+            self.assertEqual(manifest["input_path"], str(input_path.resolve()))
+            self.assertEqual(manifest["model"], "fake-model")
+            self.assertEqual(manifest["config"]["requested_model"], "test-model")
+            self.assertEqual(manifest["config"]["resolved_model"], "fake-model")
+            self.assertEqual(manifest["config"]["max_concurrency"], 3)
+            self.assertEqual(manifest["summary"]["total_retry_count"], 1)
+            self.assertEqual(manifest["columns"]["age"]["validation_status"], "pass")
+            self.assertEqual(manifest["columns"]["age"]["retry_count"], 1)
+            self.assertEqual(manifest["columns"]["age"]["output_shape"], {"rows": 2, "columns": 1})
+            self.assertIn("run_manifest", manifest["outputs"])
 
 
 class CliTests(unittest.TestCase):
@@ -162,6 +231,7 @@ class McpServerTests(unittest.TestCase):
             cleaned_csv_path="/tmp/cleaned.csv",
             report_md_path="/tmp/report.md",
             report_html_path="/tmp/report.html",
+            run_manifest_path="/tmp/run.json",
             report_md_preview="preview",
         )
 
@@ -186,6 +256,7 @@ class McpServerTests(unittest.TestCase):
         self.assertEqual(result["outputs"]["cleaned_csv"], "/tmp/cleaned.csv")
         self.assertEqual(result["outputs"]["report_md"], "/tmp/report.md")
         self.assertEqual(result["outputs"]["report_html"], "/tmp/report.html")
+        self.assertEqual(result["outputs"]["run_manifest"], "/tmp/run.json")
 
 
 if __name__ == "__main__":

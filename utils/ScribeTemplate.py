@@ -415,12 +415,25 @@ html_template = Template(r"""
           <div class="label">⚠️ Failed</div>
           <div class="value">{{ n_failed }}</div>
         </div>
+        <div class="kpi">
+          <div class="label">⏱ Duration</div>
+          <div class="value">{{ "%.2f"|format(duration_seconds or 0) }}s</div>
+        </div>
+        <div class="kpi">
+          <div class="label">🔁 Retries</div>
+          <div class="value">{{ total_retry_count or 0 }}</div>
+        </div>
       </div>
 
       <div class="chips">
         <span class="chip"><span class="dot good"></span>✅ SUCCESS</span>
         <span class="chip"><span class="dot bad"></span>❌ FAILED</span>
         <span class="chip">🧬 columns={{ colData|length }}</span>
+        {% if validation_status_counts %}
+          {% for status, count in validation_status_counts.items() %}
+            <span class="chip">{{ status }}={{ count }}</span>
+          {% endfor %}
+        {% endif %}
       </div>
     </div>
 
