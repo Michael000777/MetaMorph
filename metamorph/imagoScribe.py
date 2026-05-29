@@ -34,6 +34,12 @@ def summarizeTransformations(Res):
         lines.append(f"---\n## Column: `{col}`")
         lines.append(f"**Confidence:** {data.get('confidence', 0):.2f}")
         lines.append(f"**Status:** {'FAILED' if data.get('error') else 'SUCCESS'}")
+        lines.append(f"**Retries:** {data.get('retryCount', 0)}")
+        lines.append(f"**Validation:** {data.get('validationStatus') or '—'}")
+        if data.get("validationMessage"):
+            lines.append(f"**Validation Message:** {data['validationMessage']}")
+        if data.get("finalRoute"):
+            lines.append(f"**Final Route:** `{data['finalRoute']}`")
         lines.append("\n### Transformation Path")
         events = " → ".join([e.split('@')[0] for e in data['trackerInfo']['events_path']])
         lines.append(f"`{events}`")

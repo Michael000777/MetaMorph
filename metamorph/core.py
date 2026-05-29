@@ -10,6 +10,7 @@ import os
 import pandas as pd
 from pathlib import Path
 from langgraph.graph import StateGraph
+from langgraph.errors import GraphRecursionError
 import argparse
 
 
@@ -44,6 +45,10 @@ class FinalDataSummary(BaseModel):
     confidence: float
     ColNames: Dict[str, List[str]]
     TransformedValues: List[List[JSONScalar]]
+    retryCount: int = 0
+    validationStatus: Optional[str] = None
+    validationMessage: Optional[str] = None
+    finalRoute: Optional[str] = None
     error: Optional[str] = None
 
 class DatasetSummary(BaseModel):
@@ -73,20 +78,42 @@ async def colRunner(app, dataset_id: str, col_name: str, col_values: list, col_s
         ColumnSample=col_sample,
     )
     thread_id = generate_thread_id(dataset_id)
-    config = {"configurable": {"thread_id": f"{thread_id}:{col_name}"}}
+    config = {
+        "configurable": {"thread_id": f"{thread_id}:{col_name}"},
+        "recursion_limit": 24,
+    }
 
-    FinalState = await app.ainvoke(init, config=config)
+    try:
+        FinalState = await app.ainvoke(init, config=config)
+    except GraphRecursionError as e:
+        return FinalDataSummary(
+            trackerInfo=tracker(),
+            confidence=0.0,
+            ColNames={col_name: []},
+            TransformedValues=[],
+            validationStatus="graph_step_limit",
+            validationMessage=str(e),
+            finalRoute="GraphRecursionError",
+            error=f"GraphRecursionError: {e}",
+        )
 
     try:
 
         ParsedOut = get_key(FinalState, "parsed_data_output")
         Refined = get_key(FinalState, "refinement_results")
         TrackerInfo = get_key(FinalState, "Node_Col_Tracker")
+        ValidatorInfo = get_key(FinalState, "validator_data")
 
 
         ColumnNames = get_attr_or_item(ParsedOut, "column_name")
         TransformedData = get_attr_or_item(Refined, "cleaned_values")
         ModelConfidence = get_attr_or_item(Refined, "confidence", 0.0)
+        retry_count = get_attr_or_item(ValidatorInfo, "retry_count", 0) if ValidatorInfo else 0
+        validation_status = get_attr_or_item(ValidatorInfo, "status", None) if ValidatorInfo else None
+        validation_message = get_attr_or_item(ValidatorInfo, "message", None) if ValidatorInfo else None
+        final_route = get_attr_or_item(ValidatorInfo, "final_route", None) if ValidatorInfo else None
+        validation_passed = get_attr_or_item(ValidatorInfo, "passed", True) if ValidatorInfo else True
+        error_message = None if validation_passed else validation_message
         
         #print(f"ColNames: {ColumnNames}\n")
         ColumnNames 
@@ -96,6 +123,11 @@ async def colRunner(app, dataset_id: str, col_name: str, col_values: list, col_s
             confidence=ModelConfidence,
             ColNames=ColumnNames,
             TransformedValues=TransformedData,
+            retryCount=retry_count,
+            validationStatus=validation_status,
+            validationMessage=validation_message,
+            finalRoute=final_route,
+            error=error_message,
         )
 
     except Exception as e:

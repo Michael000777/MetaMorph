@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import Annotated, Sequence, List, Literal
 #from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 #from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.graph import END
 from langgraph.types import Command
 from datetime import datetime, timezone
 
@@ -14,11 +15,12 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
-from utils.MetaMorphState import MetaMorphState
+from utils.MetaMorphState import MetaMorphState, ValidatorData
 
 #llm = get_llm()
 
 Supervisor_system_prompt = get_prompt("Supervisor_system_prompt")
+MAX_GRAPH_STEPS_PER_COLUMN = 24
 
 
 class Supervisor(BaseModel):
@@ -34,12 +36,41 @@ class Supervisor(BaseModel):
     )
 
 
-async def supervisor_node(state: MetaMorphState) -> Command[Literal["schemaInference", "parser_agent", "refinement_agent", "validator_agent"]]: #update with names used to compile graph!
+async def supervisor_node(state: MetaMorphState) -> Command: #update with names used to compile graph!
 
     timestamp = datetime.now(timezone.utc).isoformat()
 
     #context rotuing 
     events = getattr(getattr(state, "Node_Col_Tracker", None), "events_path", []) or [] # we may not need this fallback as our default factories were specified 
+    curr_col = state.input_column_data.column_name
+
+    if len(events) >= MAX_GRAPH_STEPS_PER_COLUMN:
+        reason = (
+            f"Graph step limit exceeded for column '{curr_col}' "
+            f"({len(events)} >= {MAX_GRAPH_STEPS_PER_COLUMN})."
+        )
+        node_tracker_name = f"SupervisorNode@{timestamp}"
+        return Command(
+            update={
+                "validator_data": ValidatorData(
+                    passed=False,
+                    failed_rows=[],
+                    retry_count=(
+                        state.validator_data.retry_count
+                        if getattr(state, "validator_data", None)
+                        else 0
+                    ),
+                    message=reason,
+                    status="graph_step_limit",
+                    final_route=END,
+                ),
+                "Node_Col_Tracker": {
+                    "node_path": {curr_col: {node_tracker_name: reason}},
+                    "events_path": [f"SupervisorNode@{timestamp}"],
+                },
+            },
+            goto=END,
+        )
 
     if events:
         event_context = "Node visited for this column: " + "->".join(map(str, events)) #is this is enough? might need performance eval and experimentation.
@@ -63,8 +94,6 @@ async def supervisor_node(state: MetaMorphState) -> Command[Literal["schemaInfer
     print(f"--- MetaMorph Transitioning: Supervisor → {goto.upper()} ---", flush=True) #Key for initial validation, and see transitional steps.
 
     print(f"Supervisor Justificaiton: {reason}", flush=True)
-
-    curr_col = state.input_column_data.column_name
 
     NodeTrackerName = f"SupervisorNode@{timestamp}"
 

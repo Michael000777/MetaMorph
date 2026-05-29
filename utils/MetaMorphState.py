@@ -43,6 +43,8 @@ class ValidatorData(BaseModel):
     failed_rows: List[int]
     retry_count: int = 0
     message: Optional[str] = None
+    status: str = "pending"
+    final_route: Optional[str] = None
 
 class ColSample(BaseModel):
     column_name: str = Field(default_factory=str)
@@ -104,4 +106,3 @@ class MetaMorphState(BaseModel):
     validator_data: Optional[ValidatorData] = None
     Node_Col_Tracker: Annotated[tracker, merge_tracker] = Field(default_factory=tracker)
     #ImagoContext: ImagoState = Field(default_factory=ImagoState)
-
