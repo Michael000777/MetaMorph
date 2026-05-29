@@ -6,7 +6,7 @@ from typing import Literal, List, Optional
 from utils.llm import get_llm, ainvoke_with_backoff
 from utils.prompts import get_prompt
 from langchain_core.messages import HumanMessage
-from langgraph.graph import START, END, MessagesState
+from langgraph.graph import END
 from langgraph.types import Command
 from utils.MetaMorphState import ValidatorData, MetaMorphState, tracker
 from .validation_contracts import validate_transformation_contract
@@ -46,11 +46,21 @@ class ValidatorLLMOutput(BaseModel):
 def determine_route(decision: str, retry_count: int = 0) -> str:
 
     if decision == "pass":
-        return END #Using this for now; need to update with either end_pass or end_fail for more visibility.
+        return END
     elif decision == "retry" and retry_count < MAX_RETRIES:
         return "refinement_agent"  # name of the retry target
     else:
-        return "supervisor"
+        return END
+
+
+def validation_status(decision: str, retry_count: int = 0, *, model_error: bool = False) -> str:
+    if decision == "pass":
+        return "pass"
+    if model_error:
+        return "model_error" if retry_count >= MAX_RETRIES else "recoverable_retry"
+    if decision == "retry" and retry_count < MAX_RETRIES:
+        return "recoverable_retry"
+    return "terminal_fail"
 
 async def validator_node(state: MetaMorphState) -> Command:
     timestamp = datetime.now(timezone.utc).isoformat()
@@ -91,6 +101,7 @@ async def validator_node(state: MetaMorphState) -> Command:
         reason = f"Deterministic validation failed: {contract_result.message}"
         failed_rows = contract_result.failed_rows
         route = determine_route(decision, retry_count)
+        status = validation_status(decision, retry_count)
         new_retry_count = retry_count + 1 if decision == "retry" else retry_count
 
         print(f"Validation: {decision.upper()} — {reason}", flush=True)
@@ -109,6 +120,8 @@ async def validator_node(state: MetaMorphState) -> Command:
                     failed_rows=failed_rows,
                     message=reason,
                     retry_count=new_retry_count,
+                    status=status,
+                    final_route=route,
                 ),
                 "Node_Col_Tracker": V_PATCH,
             },
@@ -129,6 +142,8 @@ async def validator_node(state: MetaMorphState) -> Command:
     decision, reason, conf, failed_rows = None, None, 0.0, []
     llm = get_llm()
 
+    model_error = False
+
     try:
         #res = await llm.with_structured_output(
          #   ValidatorLLMOutput, method="function_calling"
@@ -140,6 +155,7 @@ async def validator_node(state: MetaMorphState) -> Command:
         decision, reason, conf, failed_rows = res.decision, res.reason, res.confidence, res.failed_rows_indices
     except Exception as e:
         # Fallback behavior on LLM failure: treat as retry (bounded by MAX_RETRIES)
+        model_error = True
         decision = "retry" if retry_count < MAX_RETRIES else "fail"
         reason = f"Validator LLM error: {e}"
         conf = 0.0
@@ -147,6 +163,7 @@ async def validator_node(state: MetaMorphState) -> Command:
     print(f"Validation: {decision.upper()} — {reason}", flush=True)
 
     route = determine_route(decision, retry_count)
+    status = validation_status(decision, retry_count, model_error=model_error)
 
     NodeTrackerName = f"validator@{timestamp}"
     
@@ -168,6 +185,8 @@ async def validator_node(state: MetaMorphState) -> Command:
             failed_rows=failed_rows, #I added in the row level checks.
             message=reason,
             retry_count=new_retry_count,
+            status=status,
+            final_route=route,
         ),
         #"messages": [HumanMessage(content=reason, name="validator")],
         #"validation_confidence": conf,

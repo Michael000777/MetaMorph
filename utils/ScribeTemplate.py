@@ -447,7 +447,17 @@ html_template = Template(r"""
           <div><b>confidence</b>={{ "%.2f"|format(conf) }}</div>
           <div><b>shape</b>={{ n_rows }}×{{ n_cols }}</div>
           <div><b>mapped_cols</b>={{ names|length }}</div>
+          <div><b>retries</b>={{ d.retryCount or 0 }}</div>
+          <div><b>validation</b>={{ d.validationStatus or "—" }}</div>
+          <div><b>final_route</b>={{ d.finalRoute or "—" }}</div>
         </div>
+
+        {% if d.validationMessage %}
+          <div class="row">
+            <div class="muted small"><b>Validation message</b></div>
+            <div class="code">{{ d.validationMessage }}</div>
+          </div>
+        {% endif %}
 
         <div class="row">
           <div class="muted small"><b>🧵 Agents</b></div>

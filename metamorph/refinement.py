@@ -35,15 +35,27 @@ async def refinement_agent(state: MetaMorphState) -> Command:
     parsed = state.parsed_data_output.parsed_output
     schema = state.schema_inference
     raw = state.input_column_data.values
+    validator_feedback = getattr(state, "validator_data", None)
 
     # Combine all context into one user message
     # Do we ignore passing raw inputs into the refiner again? token management
     #Now that we have the possibility of multiple columns per col do we pass all at once? yes for now as we don't want to pass raw and SI redundantly 
 
+    retry_feedback = ""
+    if validator_feedback and validator_feedback.message:
+        retry_feedback = (
+            "\n\nValidator feedback from the previous attempt:\n"
+            f"- status: {validator_feedback.status}\n"
+            f"- retry_count: {validator_feedback.retry_count}\n"
+            f"- failed_rows: {validator_feedback.failed_rows}\n"
+            f"- message: {validator_feedback.message}"
+        )
+
     user_message = (
         f"Original metadata column: {(raw if raw else {})}\n\n"
         f"Initial parsed values: {(parsed if parsed else {})}\n\n"
         f"Schema inference: {(schema.model_dump() if schema else {})}"
+        f"{retry_feedback}"
         )
 
     messages = [

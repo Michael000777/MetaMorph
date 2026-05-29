@@ -11,6 +11,7 @@ from utils.MetaMorphState import (
     parsedData,
     RefinementResults,
     ValidatorData,
+    tracker,
 )
 from utils.prompts import load_prompts
 
@@ -95,6 +96,25 @@ class StructuredOutputNodeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(command.goto, "schemaInference")
         node_path = command.update["Node_Col_Tracker"]["node_path"]["height"]
         self.assertIn("Schema has not been inferred yet.", node_path.values())
+
+    async def test_supervisor_node_ends_when_graph_step_limit_is_reached(self):
+        state = MetaMorphState(
+            input_column_data=InputColumnData(column_name="height", values=["5 ft 10 in"]),
+            ColumnSample=ColSample(column_name="height", row_count=1),
+            Node_Col_Tracker=tracker(
+                events_path=[
+                    f"Node{i}@2026-05-28T00:00:00+00:00"
+                    for i in range(supervisor.MAX_GRAPH_STEPS_PER_COLUMN)
+                ]
+            ),
+        )
+
+        with patch.object(supervisor, "get_llm", side_effect=AssertionError("LLM should not be called")):
+            command = await supervisor.supervisor_node(state)
+
+        self.assertEqual(command.goto, END)
+        self.assertEqual(command.update["validator_data"].status, "graph_step_limit")
+        self.assertIn("Graph step limit exceeded", command.update["validator_data"].message)
 
     async def test_schema_inference_node_uses_structured_schema_fields(self):
         fake_llm = FakeLLM()
@@ -192,7 +212,7 @@ class StructuredOutputNodeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(command.update["validator_data"].failed_rows, [0, 1])
         self.assertIn("row_major_orientation", command.update["validator_data"].message)
 
-    async def test_validator_node_routes_exhausted_contract_failure_to_supervisor(self):
+    async def test_validator_node_routes_exhausted_contract_failure_to_end(self):
         state = MetaMorphState(
             input_column_data=InputColumnData(column_name="height", values=["5 ft 10 in", "170 cm"]),
             ColumnSample=ColSample(column_name="height", row_count=2),
@@ -213,9 +233,10 @@ class StructuredOutputNodeTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(validator, "get_llm", side_effect=AssertionError("LLM should not be called")):
             command = await validator.validator_node(state)
 
-        self.assertEqual(command.goto, "supervisor")
+        self.assertEqual(command.goto, "__end__")
         self.assertFalse(command.update["validator_data"].passed)
         self.assertEqual(command.update["validator_data"].retry_count, validator.MAX_RETRIES)
+        self.assertEqual(command.update["validator_data"].status, "terminal_fail")
         self.assertIn("row_length_mismatch", command.update["validator_data"].message)
 
 
