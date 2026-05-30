@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Sequence
 
 try:
-    from metamorph.core import DEFAULT_OUTDIR, run_MetaMorph_on_csv
+    from metamorph.core import DEFAULT_OUTDIR, parse_node_model_overrides, run_MetaMorph_on_csv
 except ModuleNotFoundError:
     # Support the documented direct script form:
     # `python metamorph/mainConcurrent.py ...`
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from metamorph.core import DEFAULT_OUTDIR, run_MetaMorph_on_csv
+    from metamorph.core import DEFAULT_OUTDIR, parse_node_model_overrides, run_MetaMorph_on_csv
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -36,11 +36,27 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Output directory for the generated report files. Defaults to {DEFAULT_OUTDIR}/.",
     )
     parser.add_argument(
+        "--provider",
+        default="openai",
+        choices=["openai", "groq"],
+        help="LLM provider to use. Defaults to openai.",
+    )
+    parser.add_argument(
         "--llm",
         "-l",
         type=str,
         default="gpt-5-nano",
-        help="OpenAI LLM model to use.",
+        help="Default LLM model to use.",
+    )
+    parser.add_argument(
+        "--node-model",
+        action="append",
+        default=[],
+        metavar="NODE=MODEL",
+        help=(
+            "Override the model for a graph node. Can be repeated. "
+            "Nodes: supervisor, schemaInference, parser_agent, refinement_agent, validator_agent."
+        ),
     )
     parser.add_argument(
         "--max-concurrency",
@@ -57,7 +73,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         input_path=args.input,
         outdir=args.outdir,
         dataset_id=args.dataset_id,
+        provider=args.provider,
         llm=args.llm,
+        node_models=parse_node_model_overrides(args.node_model),
         max_concurrency=args.max_concurrency,
     )
     return 0

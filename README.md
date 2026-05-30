@@ -102,7 +102,31 @@ pixi run python metamorph/mainConcurrent.py --input examples/data1.csv -d testRo
 - --input : path to your dataset (CSV)
 - -d / --dataset-id : identifier used in outputs and reporting
 - -o / --outdir : output directory (created if missing)
-- -l / --llm : model selection (e.g., gpt-5-mini). Currently GPT moels only
+- --provider : LLM provider (`openai` or `groq`). Defaults to `openai`.
+- -l / --llm : default model selection (e.g., `gpt-5-mini` for OpenAI or a Groq chat model)
+- --node-model : optional per-node model override in `NODE=MODEL` form. Can be repeated.
+
+Supported node override keys:
+- `supervisor`
+- `schemaInference`
+- `parser_agent`
+- `refinement_agent`
+- `validator_agent`
+
+Example using Groq as the default provider and a stronger parser model:
+```bash
+pixi run python metamorph/mainConcurrent.py \
+  --input examples/data1.csv \
+  --provider groq \
+  --llm llama-3.1-8b-instant \
+  --node-model parser_agent=llama-3.3-70b-versatile
+```
+
+### Provider credentials
+- OpenAI requires `OPENAI_API_KEY`.
+- Groq requires `GROQ_API_KEY`.
+
+Environment variables are loaded from `.env` via `python-dotenv`.
 
 ## MCP (Model Context Protocol) Support
 
@@ -141,12 +165,15 @@ Runs the full MetaMorph transformation pipeline on a CSV dataset.
 - `input_path` — path to CSV file  
 - `outdir` — output directory  
 - `dataset_id` (optional)  
+- `provider` (optional, `openai` or `groq`)
 - `llm` (optional)  
+- `node_models` (optional mapping of graph node names to model names)
 - `max_concurrency` (optional)  
 
 **Outputs**
 - path to cleaned CSV  
 - Markdown + HTML transformation reports  
+- machine-readable run manifest (`run.json`)
 - short report preview for client inspection  
 
 ### `metamorph_info`
@@ -167,6 +194,7 @@ MetaMorph can generate:
 - per-column summaries (confidence, errors, notes)
 - provenance tracking (events_path, node_path)
 - optional HTML report for debugging and review
+- `run.json` manifest for audit/reproducibility metadata
 
 
 ---

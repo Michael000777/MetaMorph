@@ -140,7 +140,7 @@ async def validator_node(state: MetaMorphState) -> Command:
     
     # Initialize defaults so later code never references undefined names
     decision, reason, conf, failed_rows = None, None, 0.0, []
-    llm = get_llm()
+    llm = get_llm("validator_agent")
 
     model_error = False
 

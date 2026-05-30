@@ -17,6 +17,20 @@ from utils.MetaMorphState import tracker
 
 
 class CoreRunnerTests(unittest.TestCase):
+    def test_parse_node_model_overrides(self):
+        self.assertEqual(
+            core.parse_node_model_overrides(
+                ["schemaInference=schema-model", "parser_agent=parser-model"]
+            ),
+            {
+                "schemaInference": "schema-model",
+                "parser_agent": "parser-model",
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            core.parse_node_model_overrides(["unknown=model"])
+
     def test_runner_uses_parameters_and_default_output_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -52,11 +66,7 @@ class CoreRunnerTests(unittest.TestCase):
             old_cwd = Path.cwd()
             try:
                 os.chdir(tmp_path)
-                with (
-                    patch.object(core, "set_llm_model") as set_llm_model,
-                    patch.object(core, "get_llm", return_value=SimpleNamespace(model_name="fake-model")),
-                    patch.object(core, "run_all", side_effect=fake_run_all),
-                ):
+                with patch.object(core, "run_all", side_effect=fake_run_all):
                     result = core.run_MetaMorph_on_csv(
                         input_path=input_path,
                         llm="test-model",
@@ -65,9 +75,8 @@ class CoreRunnerTests(unittest.TestCase):
             finally:
                 os.chdir(old_cwd)
 
-            set_llm_model.assert_called_once_with("test-model")
             self.assertEqual(result.dataset_id, "sample_metadata")
-            self.assertEqual(result.model, "fake-model")
+            self.assertEqual(result.model, "test-model")
             self.assertEqual(captured["dataset_id"], "sample_metadata")
             self.assertEqual(captured["columns"], {"height": ["5 ft 10 in", "170 cm"]})
             self.assertEqual(captured["max_concurrency"], 7)
@@ -103,11 +112,7 @@ class CoreRunnerTests(unittest.TestCase):
                     },
                 )
 
-            with (
-                patch.object(core, "set_llm_model"),
-                patch.object(core, "get_llm", return_value=SimpleNamespace(model_name="fake-model")),
-                patch.object(core, "run_all", side_effect=fake_run_all),
-            ):
+            with patch.object(core, "run_all", side_effect=fake_run_all):
                 result = core.run_MetaMorph_on_csv(
                     input_path=input_path,
                     outdir=outdir,
@@ -149,16 +154,14 @@ class CoreRunnerTests(unittest.TestCase):
                     },
                 )
 
-            with (
-                patch.object(core, "set_llm_model"),
-                patch.object(core, "get_llm", return_value=SimpleNamespace(model_name="fake-model")),
-                patch.object(core, "run_all", side_effect=fake_run_all),
-            ):
+            with patch.object(core, "run_all", side_effect=fake_run_all):
                 result = core.run_MetaMorph_on_csv(
                     input_path=input_path,
                     outdir=outdir,
                     dataset_id="dataset-a",
+                    provider="groq",
                     llm="test-model",
+                    node_models={"parser_agent": "parser-model"},
                     max_concurrency=3,
                 )
 
@@ -169,9 +172,11 @@ class CoreRunnerTests(unittest.TestCase):
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             self.assertEqual(manifest["dataset_id"], "dataset-a")
             self.assertEqual(manifest["input_path"], str(input_path.resolve()))
-            self.assertEqual(manifest["model"], "fake-model")
+            self.assertEqual(manifest["model"], "test-model")
+            self.assertEqual(manifest["config"]["provider"], "groq")
             self.assertEqual(manifest["config"]["requested_model"], "test-model")
-            self.assertEqual(manifest["config"]["resolved_model"], "fake-model")
+            self.assertEqual(manifest["config"]["resolved_model"], "test-model")
+            self.assertEqual(manifest["config"]["node_models"], {"parser_agent": "parser-model"})
             self.assertEqual(manifest["config"]["max_concurrency"], 3)
             self.assertEqual(manifest["summary"]["total_retry_count"], 1)
             self.assertEqual(manifest["columns"]["age"]["validation_status"], "pass")
@@ -205,8 +210,12 @@ class CliTests(unittest.TestCase):
                     "dataset-a",
                     "--outdir",
                     "outputs",
+                    "--provider",
+                    "groq",
                     "--llm",
                     "test-model",
+                    "--node-model",
+                    "parser_agent=parser-model",
                     "--max-concurrency",
                     "4",
                 ]
@@ -217,7 +226,9 @@ class CliTests(unittest.TestCase):
             input_path="examples/data1.csv",
             outdir="outputs",
             dataset_id="dataset-a",
+            provider="groq",
             llm="test-model",
+            node_models={"parser_agent": "parser-model"},
             max_concurrency=4,
         )
 
@@ -240,7 +251,9 @@ class McpServerTests(unittest.TestCase):
                 input_path="input.csv",
                 outdir="outputs",
                 dataset_id=None,
+                provider="groq",
                 llm="test-model",
+                node_models={"parser_agent": "parser-model"},
                 max_concurrency=3,
             )
 
@@ -248,7 +261,9 @@ class McpServerTests(unittest.TestCase):
             input_path="input.csv",
             outdir="outputs",
             dataset_id=None,
+            provider="groq",
             llm="test-model",
+            node_models={"parser_agent": "parser-model"},
             max_concurrency=3,
         )
         self.assertEqual(result["dataset_id"], "dataset-a")

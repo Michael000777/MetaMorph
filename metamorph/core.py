@@ -28,7 +28,7 @@ from .validator import validator_node
 from .imagoScribe import summarizeTransformations
 
 
-from utils.llm import set_llm_model, get_llm
+from utils.llm import LLMClientProvider, LLMProviderConfig, use_llm_provider
 from utils.thread import generate_thread_id
 from utils.MetaMorphState import tracker, MetaMorphState, InputColumnData
 from utils.tools import get_key, get_attr_or_item
@@ -42,13 +42,38 @@ JSONScalar = Union[str, int, float, bool, None]
 DEFAULT_OUTDIR = "Reports"
 DEFAULT_GRAPH_RECURSION_LIMIT = 24
 RUN_MANIFEST_FILENAME = "run.json"
+SUPPORTED_NODE_MODEL_KEYS = {
+    "supervisor",
+    "schemaInference",
+    "parser_agent",
+    "refinement_agent",
+    "validator_agent",
+}
 
 logger = logging.getLogger(__name__)
+
+
+def parse_node_model_overrides(overrides: List[str] | None) -> Dict[str, str]:
+    node_models: Dict[str, str] = {}
+    for override in overrides or []:
+        if "=" not in override:
+            raise ValueError(f"Node model override must use NODE=MODEL format: {override!r}")
+        node, model = override.split("=", 1)
+        node = node.strip()
+        model = model.strip()
+        if not node or not model:
+            raise ValueError(f"Node model override must include both node and model: {override!r}")
+        if node not in SUPPORTED_NODE_MODEL_KEYS:
+            supported = ", ".join(sorted(SUPPORTED_NODE_MODEL_KEYS))
+            raise ValueError(f"Unsupported node override '{node}'. Supported nodes: {supported}.")
+        node_models[node] = model
+    return node_models
 
 class RunConfig(BaseModel):
     provider: str = "openai"
     requested_model: str
     resolved_model: str
+    node_models: Dict[str, str] = Field(default_factory=dict)
     max_concurrency: int = 2
     graph_recursion_limit: int = DEFAULT_GRAPH_RECURSION_LIMIT
     output_dir: str
@@ -473,7 +498,9 @@ def run_MetaMorph_on_csv(
     input_path: str,
     outdir: str | Path = DEFAULT_OUTDIR,
     dataset_id: str | None = None,
+    provider: str = "openai",
     llm: str = "gpt-5-nano",
+    node_models: Dict[str, str] | None = None,
     max_concurrency: int = 2,    
     debug: bool = False,
 ) -> MetaMorphResults:
@@ -485,12 +512,19 @@ def run_MetaMorph_on_csv(
     outdir = Path(outdir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
 
-
-    set_llm_model(llm)
-    model_name = get_llm().model_name
+    llm_provider = LLMClientProvider(
+        LLMProviderConfig(
+            provider=provider,
+            default_model=llm,
+            node_models=node_models or {},
+        )
+    )
+    model_name = llm_provider.default_model
     config = RunConfig(
+        provider=llm_provider.provider,
         requested_model=llm,
         resolved_model=model_name,
+        node_models=dict(node_models or {}),
         max_concurrency=max_concurrency,
         graph_recursion_limit=DEFAULT_GRAPH_RECURSION_LIMIT,
         output_dir=str(outdir),
@@ -521,15 +555,16 @@ def run_MetaMorph_on_csv(
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
 
     # Running METAMORPH on all columns 
-    cleaned_data = asyncio.run(
-        run_all(
-            graph=graph,
-            dataset_id=dataset_id,
-            columns=columns,
-            max_concurrency=max_concurrency,
-            graph_recursion_limit=config.graph_recursion_limit,
+    with use_llm_provider(llm_provider):
+        cleaned_data = asyncio.run(
+            run_all(
+                graph=graph,
+                dataset_id=dataset_id,
+                columns=columns,
+                max_concurrency=max_concurrency,
+                graph_recursion_limit=config.graph_recursion_limit,
+            )
         )
-    )
 
     report_md = summarizeTransformations(cleaned_data.model_dump())
 
@@ -613,10 +648,26 @@ if __name__ == "__main__":
         help=f"Output directory for the generated report files. Defaults to {DEFAULT_OUTDIR}/."
     )
     parser.add_argument(
+        "--provider",
+        default="openai",
+        choices=["openai", "groq"],
+        help="LLM provider to use. Defaults to openai."
+    )
+    parser.add_argument(
         "--llm", "-l",
         type=str,
         default="gpt-5-nano",
-        help="OpenAI LLM model to use"
+        help="Default LLM model to use"
+    )
+    parser.add_argument(
+        "--node-model",
+        action="append",
+        default=[],
+        metavar="NODE=MODEL",
+        help=(
+            "Override the model for a graph node. Can be repeated. "
+            "Nodes: supervisor, schemaInference, parser_agent, refinement_agent, validator_agent."
+        )
     )
     parser.add_argument(
         "--max-concurrency",
@@ -630,6 +681,8 @@ if __name__ == "__main__":
         input_path=args.input,
         outdir=args.outdir,
         dataset_id=args.dataset_id,
+        provider=args.provider,
         llm=args.llm,
+        node_models=parse_node_model_overrides(args.node_model),
         max_concurrency=args.max_concurrency,
     )
