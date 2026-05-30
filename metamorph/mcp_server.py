@@ -31,6 +31,7 @@ def metamorph_run(
             "cleaned_csv": res.cleaned_csv_path,
             "report_md": res.report_md_path,
             "report_html": res.report_html_path,
+            "run_manifest": res.run_manifest_path,
         },
         "report_md_preview": res.report_md_preview,
     }
