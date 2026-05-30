@@ -9,18 +9,22 @@ def metamorph_run(
     input_path: str,
     outdir: str,
     dataset_id: str | None = None,
+    provider: str = "openai",
     llm: str = "gpt-5-nano",
+    node_models: dict[str, str] | None = None,
     max_concurrency: int = 2,
 ) -> dict:
     """
     Run MetaMorph on a CSV file and write outputs to outdir.
-    Returns paths to cleaned CSV + reports, plus a short markdown preview.
+    Returns paths to cleaned CSV, reports, run manifest, plus a short markdown preview.
     """
     res = run_MetaMorph_on_csv(
         input_path=input_path,
         outdir=outdir,
         dataset_id=dataset_id,
+        provider=provider,
         llm=llm,
+        node_models=node_models,
         max_concurrency=max_concurrency,
     )
     return {
@@ -43,7 +47,8 @@ def metamorph_info() -> dict:
         "name": "MetaMorph",
         "purpose": "Transform messy CSV metadata into clean structured outputs + reports",
         "inputs": ["CSV path"],
-        "outputs": ["cleaned CSV", "markdown report", "html report"],
+        "providers": ["openai", "groq"],
+        "outputs": ["cleaned CSV", "markdown report", "html report", "run manifest"],
     }
 
 if __name__ == "__main__":

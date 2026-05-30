@@ -82,7 +82,7 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
     #response = await llm.with_structured_output(
     #    StructureParserOutput
      #   ).ainvoke(messages)
-    llm = get_llm()
+    llm = get_llm("parser_agent")
     
     r = llm.with_structured_output(StructureParserOutput)
     response = await ainvoke_with_backoff(r, messages)
@@ -121,4 +121,3 @@ async def parser_node(state: MetaMorphState) -> Command[Literal["supervisor"]]:
 
 
     return Command(update=P_PATCH, goto="supervisor")
-

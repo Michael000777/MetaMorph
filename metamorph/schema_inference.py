@@ -42,7 +42,7 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
             "content": payload
         } 
     ]
-    llm = get_llm()
+    llm = get_llm("schemaInference")
 
     r = llm.with_structured_output(SchemaInference)
     response = await ainvoke_with_backoff(r, messages)
@@ -79,4 +79,3 @@ async def schema_inference_node(state: MetaMorphState) -> Command[Literal["super
         update=SI_PATCH,
         goto="supervisor"
     )
-
