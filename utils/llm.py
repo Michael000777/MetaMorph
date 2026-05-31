@@ -14,6 +14,18 @@ from openai import APIError, APITimeoutError, RateLimitError
 load_dotenv()
 
 SUPPORTED_PROVIDERS = {"openai", "groq"}
+OPENAI_RETRYABLE_EXCEPTIONS = (RateLimitError, APITimeoutError, APIError)
+
+try:
+    from groq import APIError as GroqAPIError
+    from groq import APITimeoutError as GroqAPITimeoutError
+    from groq import RateLimitError as GroqRateLimitError
+
+    GROQ_RETRYABLE_EXCEPTIONS = (GroqRateLimitError, GroqAPITimeoutError, GroqAPIError)
+except ImportError:
+    GROQ_RETRYABLE_EXCEPTIONS = ()
+
+RETRYABLE_LLM_EXCEPTIONS = OPENAI_RETRYABLE_EXCEPTIONS + GROQ_RETRYABLE_EXCEPTIONS
 
 
 @dataclass(frozen=True)
@@ -131,15 +143,7 @@ async def ainvoke_with_backoff(runnable, *args, max_retries=8, base_delay=0.5, m
     for attempt in range(max_retries + 1):
         try:
             return await runnable.ainvoke(*args, **kwargs)
-        except RateLimitError:
-            if attempt == max_retries:
-                raise
-
-            delay = min(max_delay, base_delay * (2 ** attempt))
-            delay = delay + random.uniform(0, jitter)
-            await asyncio.sleep(delay)
-
-        except (APITimeoutError, APIError):
+        except RETRYABLE_LLM_EXCEPTIONS:
             if attempt == max_retries:
                 raise
 

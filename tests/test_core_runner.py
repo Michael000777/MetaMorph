@@ -31,6 +31,19 @@ class CoreRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             core.parse_node_model_overrides(["unknown=model"])
 
+    def test_runner_rejects_unknown_node_model_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            input_path = tmp_path / "input.csv"
+            pd.DataFrame({"age": ["10"]}).to_csv(input_path, index=False)
+
+            with self.assertRaises(ValueError):
+                core.run_MetaMorph_on_csv(
+                    input_path=input_path,
+                    outdir=tmp_path / "outputs",
+                    node_models={"parser": "parser-model"},
+                )
+
     def test_runner_uses_parameters_and_default_output_dir(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)
@@ -182,6 +195,11 @@ class CoreRunnerTests(unittest.TestCase):
             self.assertEqual(manifest["columns"]["age"]["validation_status"], "pass")
             self.assertEqual(manifest["columns"]["age"]["retry_count"], 1)
             self.assertEqual(manifest["columns"]["age"]["output_shape"], {"rows": 2, "columns": 1})
+            self.assertEqual(
+                manifest["columns"]["age"]["model_routing"],
+                {"default": "test-model", "parser_agent": "parser-model"},
+            )
+            self.assertNotIn("model_name", manifest["columns"]["age"])
             self.assertIn("run_manifest", manifest["outputs"])
 
 
@@ -234,6 +252,19 @@ class CliTests(unittest.TestCase):
 
 
 class McpServerTests(unittest.TestCase):
+    def test_mcp_run_rejects_unknown_node_model_keys(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            input_path = tmp_path / "input.csv"
+            pd.DataFrame({"age": ["10"]}).to_csv(input_path, index=False)
+
+            with self.assertRaises(ValueError):
+                mcp_server.metamorph_run(
+                    input_path=str(input_path),
+                    outdir=str(tmp_path / "outputs"),
+                    node_models={"parser": "parser-model"},
+                )
+
     def test_mcp_run_delegates_to_core_runner_without_cli_globals(self):
         fake_result = SimpleNamespace(
             dataset_id="dataset-a",

@@ -53,6 +53,20 @@ SUPPORTED_NODE_MODEL_KEYS = {
 logger = logging.getLogger(__name__)
 
 
+def validate_node_model_mapping(node_models: Dict[str, str] | None) -> Dict[str, str]:
+    validated: Dict[str, str] = {}
+    for node, model in (node_models or {}).items():
+        node = node.strip()
+        model = model.strip() if isinstance(model, str) else model
+        if not node or not model:
+            raise ValueError(f"Node model override must include both node and model: {node!r}={model!r}")
+        if node not in SUPPORTED_NODE_MODEL_KEYS:
+            supported = ", ".join(sorted(SUPPORTED_NODE_MODEL_KEYS))
+            raise ValueError(f"Unsupported node override '{node}'. Supported nodes: {supported}.")
+        validated[node] = model
+    return validated
+
+
 def parse_node_model_overrides(overrides: List[str] | None) -> Dict[str, str]:
     node_models: Dict[str, str] = {}
     for override in overrides or []:
@@ -63,11 +77,8 @@ def parse_node_model_overrides(overrides: List[str] | None) -> Dict[str, str]:
         model = model.strip()
         if not node or not model:
             raise ValueError(f"Node model override must include both node and model: {override!r}")
-        if node not in SUPPORTED_NODE_MODEL_KEYS:
-            supported = ", ".join(sorted(SUPPORTED_NODE_MODEL_KEYS))
-            raise ValueError(f"Unsupported node override '{node}'. Supported nodes: {supported}.")
         node_models[node] = model
-    return node_models
+    return validate_node_model_mapping(node_models)
 
 class RunConfig(BaseModel):
     provider: str = "openai"
@@ -128,7 +139,7 @@ class ColumnRunSummary(BaseModel):
     output_shape: Dict[str, int] = Field(default_factory=dict)
     node_count: int = 0
     node_timings: List[NodeTiming] = Field(default_factory=list)
-    model_name: Optional[str] = None
+    model_routing: Dict[str, str] = Field(default_factory=dict)
     estimated_tokens: Optional[int] = None
     estimated_cost_usd: Optional[float] = None
     error: Optional[str] = None
@@ -205,7 +216,11 @@ def _column_output_shape(summary: FinalDataSummary) -> Dict[str, int]:
     }
 
 
-def _build_column_manifest(col: str, summary: FinalDataSummary, model_name: str) -> ColumnRunSummary:
+def _build_column_manifest(
+    col: str,
+    summary: FinalDataSummary,
+    model_routing: Dict[str, str],
+) -> ColumnRunSummary:
     events = summary.trackerInfo.events_path if summary.trackerInfo else []
     output_columns = summary.ColNames.get(col, []) if summary.ColNames else []
     return ColumnRunSummary(
@@ -219,7 +234,7 @@ def _build_column_manifest(col: str, summary: FinalDataSummary, model_name: str)
         output_shape=_column_output_shape(summary),
         node_count=len(events),
         node_timings=_node_timings(events),
-        model_name=model_name,
+        model_routing=model_routing,
         error=summary.error,
     )
 
@@ -232,6 +247,7 @@ def build_run_manifest(
     config: RunConfig,
     output_files: RunOutputFiles,
 ) -> RunManifest:
+    model_routing = {"default": model_name, **config.node_models}
     return RunManifest(
         dataset_id=cleaned_data.dataset_id,
         input_path=str(input_path),
@@ -249,7 +265,7 @@ def build_run_manifest(
             "validation_status_counts": cleaned_data.validation_status_counts,
         },
         columns={
-            col: _build_column_manifest(col, summary, model_name)
+            col: _build_column_manifest(col, summary, model_routing)
             for col, summary in cleaned_data.colData.items()
         },
     )
@@ -512,11 +528,12 @@ def run_MetaMorph_on_csv(
     outdir = Path(outdir).resolve()
     outdir.mkdir(parents=True, exist_ok=True)
 
+    node_models = validate_node_model_mapping(node_models)
     llm_provider = LLMClientProvider(
         LLMProviderConfig(
             provider=provider,
             default_model=llm,
-            node_models=node_models or {},
+            node_models=node_models,
         )
     )
     model_name = llm_provider.default_model
@@ -524,7 +541,7 @@ def run_MetaMorph_on_csv(
         provider=llm_provider.provider,
         requested_model=llm,
         resolved_model=model_name,
-        node_models=dict(node_models or {}),
+        node_models=dict(node_models),
         max_concurrency=max_concurrency,
         graph_recursion_limit=DEFAULT_GRAPH_RECURSION_LIMIT,
         output_dir=str(outdir),
