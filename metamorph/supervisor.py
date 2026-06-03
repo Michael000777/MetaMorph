@@ -82,7 +82,7 @@ async def supervisor_node(state: MetaMorphState) -> Command: #update with names 
         {"role": "system", "content": Supervisor_system_prompt},
         {"role": "user", "content" : event_context}
     ]
-    llm = get_llm()
+    llm = get_llm("supervisor")
 
     r = llm.with_structured_output(Supervisor)
     response = await ainvoke_with_backoff(r, messages)

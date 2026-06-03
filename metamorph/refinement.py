@@ -62,7 +62,7 @@ async def refinement_agent(state: MetaMorphState) -> Command:
         {"role": "system", "content": refinement_prompt},
         {"role": "user", "content": user_message}
     ]
-    llm = get_llm()
+    llm = get_llm("refinement_agent")
 
     try:
         r = llm.with_structured_output(Refinement, method="function_calling")
